@@ -1,26 +1,26 @@
 <Solution>
   <Folder Name="/Backend/">
-    <Project Path="Ledgance.Api/Ledgance.Api.csproj" Id="32f85ff4-287c-46b1-b0f6-78d018ff59a1" />
+    <Project Path="Backend/Ledgance.Api/Ledgance.Api.csproj" />
   </Folder>
   <Folder Name="/Backend/Modules/" />
   <Folder Name="/Backend/Modules/AI/">
-    <Project Path="Ledgance.AI.Application/Ledgance.AI.Application.csproj" Id="16accb55-1610-4b5d-91ab-3cd8fc0019af" />
-    <Project Path="Ledgance.AI.Infrastructure/Ledgance.AI.Infrastructure.csproj" Id="651a9ad5-0613-4a16-b8a1-a8cda7d6fdde" />
+    <Project Path="Backend/Modules/AI/Ledgance.AI.Application/Ledgance.AI.Application.csproj" />
+    <Project Path="Backend/Modules/AI/Ledgance.AI.Infrastructure/Ledgance.AI.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Backend/Modules/Client/">
-    <Project Path="Ledgance.Client.Application/Ledgance.Client.Application.csproj" Id="6d4cc5d7-c676-45d1-b3aa-bc9d59c9007f" />
-    <Project Path="Ledgance.Client.Domain/Ledgance.Client.Domain.csproj" Id="00d682d6-885f-4c3a-8659-58e17630b3d9" />
+    <Project Path="Backend/Modules/Client/Ledgance.Client.Application/Ledgance.Client.Application.csproj" />
+    <Project Path="Backend/Modules/Client/Ledgance.Client.Domain/Ledgance.Client.Domain.csproj" />
   </Folder>
   <Folder Name="/Backend/Modules/Organization/">
-    <Project Path="Ledgance.Organization.Application/Ledgance.Organization.Application.csproj" Id="0a410343-4b94-4713-a518-e3a9db2a2caf" />
-    <Project Path="Ledgance.Organization.Domain/Ledgance.Organization.Domain.csproj" Id="3e70432e-958e-4980-8974-2151fae55f35" />
+    <Project Path="Backend/Modules/Organization/Ledgance.Organization.Application/Ledgance.Organization.Application.csproj" />
+    <Project Path="Backend/Modules/Organization/Ledgance.Organization.Domain/Ledgance.Organization.Domain.csproj" />
   </Folder>
   <Folder Name="/Backend/Modules/User/">
-    <Project Path="Ledgance.User.Application/Ledgance.User.Application.csproj" Id="12690275-31dd-459c-b086-5bd9a829ce28" />
-    <Project Path="Ledgance.User.Domain/Ledgance.User.Domain.csproj" Id="33b38492-e951-4a34-83c1-2780e947695e" />
+    <Project Path="Backend/Modules/User/Ledgance.User.Application/Ledgance.User.Application.csproj" />
+    <Project Path="Backend/Modules/User/Ledgance.User.Domain/Ledgance.User.Domain.csproj" />
   </Folder>
   <Folder Name="/Backend/Shared/">
-    <Project Path="Ledgance.Shared.Application/Ledgance.Shared.Application.csproj" Id="00d6cd9c-1b8c-4e58-9ce4-4fa7dcb0b38c" />
-    <Project Path="Ledgance.Shared.Infrastructure/Ledgance.Shared.Infrastructure.csproj" Id="5cf450b7-5995-405c-92b2-1eb7c6ae41fe" />
+    <Project Path="Backend/Shared/Ledgance.Shared.Application/Ledgance.Shared.Application.csproj" />
+    <Project Path="Backend/Shared/Ledgance.Shared.Infrastructure/Ledgance.Shared.Infrastructure.csproj" />
   </Folder>
 </Solution>
