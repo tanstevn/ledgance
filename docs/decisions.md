@@ -4,6 +4,32 @@ Newest first. Each entry: decision, why, consequence.
 
 ---
 
+## ADR-018 — One AI orchestrator; capability catalogs own tier gating; downward-only fallback
+
+**Decision.** All AI traffic flows through `IAiCompletionService` (Shared). The orchestrator
+enforces, in order: authorization → `ai_enabled` → tier gate → monthly units → context-size
+truncation and gate → tier-routed execution → usage recording. Each product module declares a
+**capability catalog** (e.g. `AuditAiCapabilities`) mapping capability → required tier; nothing
+else encodes AI gating. Provider routing is tier → provider/model with configuration override
+(`Ai:Routing`); defaults are Ollama/basic, OpenAI-`gpt-4o`/advanced,
+Anthropic-`claude-opus-5`/reasoning+agentic. On provider failure the orchestrator falls back
+**down** the tier chain only; a workload above the plan's tier is a 402, and total provider
+failure is a 503 (`AiUnavailableException`). Usage is one unit per completion, per
+organization/module/month, recorded only on success. AI output is always an `AiProposalResult`
+— AI has no write path into the audit record; humans apply proposals through the normal
+commands. The Anthropic adapter uses the official `Anthropic` C# SDK; Ollama and OpenAI are
+thin HTTP adapters.
+
+**Why.** One choke point makes authorization, entitlements, cost control and provider swaps
+auditable in one place; catalogs keep tier logic out of handlers; downward-only fallback
+guarantees a plan's ceiling is never exceeded by an outage.
+
+**Consequence.** Adding a capability = one catalog entry + one slice. Adding a provider = one
+adapter + a routing entry. Phase 5 (Accounting AI) reuses everything with
+`ProductModule.Accounting`; Phase 7 adds an OpenClaw adapter behind the `agentic` tier.
+
+---
+
 ## ADR-017 — Engagement content is confined to the assigned team
 
 **Decision.** Engagement-scoped records (planning, materiality, risks, procedures, working

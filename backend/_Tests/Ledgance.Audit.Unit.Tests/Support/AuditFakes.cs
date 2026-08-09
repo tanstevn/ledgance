@@ -112,6 +112,42 @@ namespace Ledgance.Audit.Unit.Tests.Support {
             Task.FromResult(Progress);
     }
 
+    public sealed class InMemoryRiskRepository : IRiskRepository {
+        public List<Risk> Risks { get; } = [];
+
+        public Task<Risk?> FindAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(Risks.FirstOrDefault(risk => risk.Id == id));
+
+        public Task<IReadOnlyList<Risk>> ListAsync(Guid engagementId, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Risk>>(Risks
+                .Where(risk => risk.EngagementId == engagementId)
+                .ToList());
+
+        public Task AddAsync(Risk risk, CancellationToken ct) {
+            Risks.Add(risk);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(Risk risk, CancellationToken ct) =>
+            Task.CompletedTask;
+    }
+
+    public sealed class InMemoryTrialBalanceRepository : ITrialBalanceRepository {
+        public List<TrialBalanceImport> Imports { get; } = [];
+
+        public Task<TrialBalanceImport?> FindLatestAsync(Guid engagementId,
+            CancellationToken ct) =>
+            Task.FromResult(Imports
+                .Where(import => import.EngagementId == engagementId)
+                .OrderByDescending(import => import.ImportedAt)
+                .FirstOrDefault());
+
+        public Task AddAsync(TrialBalanceImport import, CancellationToken ct) {
+            Imports.Add(import);
+            return Task.CompletedTask;
+        }
+    }
+
     public sealed class StubOrganizationDirectory : IOrganizationDirectory {
         public List<OrganizationMemberInfo> Members { get; } = [];
 

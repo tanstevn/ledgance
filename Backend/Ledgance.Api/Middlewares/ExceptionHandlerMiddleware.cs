@@ -61,6 +61,13 @@ namespace Ledgance.Api.Middlewares {
                 await WriteErrorResponse(context,
                     HttpStatusCode.PaymentRequired, errorObject);
             }
+            catch (AiUnavailableException ex) {
+                var errorObject = Result<object>
+                    .Error(ex.Message);
+
+                await WriteErrorResponse(context,
+                    HttpStatusCode.ServiceUnavailable, errorObject);
+            }
             catch (InvalidOperationException ex) {
                 var errorObject = Result<object>
                     .Error(ex.Message);

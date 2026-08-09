@@ -11,9 +11,9 @@
 
 | | |
 | --- | --- |
-| Last completed phase | **Phase 2 — Audit Core MVP (backend)** |
+| Last completed phase | **Phase 3 — Audit AI (backend)** |
 | Current phase | none in progress |
-| Next phase | **Phase 3 — Audit AI** (not started) |
+| Next phase | **Phase 4 — Accounting Core MVP** (not started) |
 
 ---
 
@@ -24,9 +24,9 @@ Verified by running the commands, not assumed.
 | Check | Result |
 | --- | --- |
 | `dotnet build backend/Ledgance.slnx` | succeeded — 0 errors, 0 C# warnings |
-| `dotnet test backend/Ledgance.slnx` | **98 passed, 0 failed** (41 shared, 57 audit, 0 accounting) |
-| API smoke test | boots clean; every `api/audit/*`, `api/session` and `api/onboarding/*` route → 401 unauthenticated; OpenAPI 200; unknown routes 404 |
-| Frontend | untouched this phase (Phase 8); `npx tsc --noEmit` still clean |
+| `dotnet test backend/Ledgance.slnx` | **113 passed, 0 failed** (51 shared, 62 audit, 0 accounting) |
+| API smoke test | boots clean; every `api/audit/*` (incl. `api/audit/ai/*`), `api/session` and `api/onboarding/*` route → 401 unauthenticated; OpenAPI 200; unknown routes 404 |
+| Frontend | untouched in Phases 2–3 (Phase 8); `npx tsc --noEmit` still clean |
 
 ---
 
@@ -93,6 +93,26 @@ jsonb), repositories composing `SupabaseRepository<T>`, `EngagementProgressReade
 stage-gate snapshot), `ClientLookup`/`ClientEngagementCounter` (cross-feature ports),
 `SupabaseEvidenceFileStore` (private `audit-evidence` bucket, signed URLs).
 
+### AI (Phase 3)
+
+- **Shared AI foundation** — `Shared.Application/Ai` contracts (`AiWorkload`,
+  `IAiCompletionService`, `IAiChatClient`, `IAiModelRouter`, `IAiUsageMeter`) and the
+  `Shared.Infrastructure/Ai` orchestrator: authorization → `ai_enabled` → tier gate → monthly
+  units (`ai_usage` table, migration 0003) → per-document context truncation + token gate →
+  tier-routed execution → usage recording on success only. Downward-only fallback; above-tier =
+  402; all-providers-failed = 503.
+- **Providers** — Ollama (`api/chat`) and OpenAI (`v1/chat/completions`) over HttpClient;
+  Anthropic via the official `Anthropic` SDK (default `claude-opus-5` for reasoning/agentic).
+  Routing overridable per tier via `Ai:Routing` configuration.
+- **Audit AI module** — `AuditAiCapabilities` catalog (10 capabilities: 2 basic, 4 advanced,
+  4 reasoning) in AI.Domain; 10 slices in AI.Application, each team-confined via
+  `IEngagementAccessGuard`, context-assembled from the caller's own repositories
+  (`EngagementAiContext`), activity-logged (`ai.*`), returning `AiProposalResult` — proposals
+  only, no write path into the audit record. `api/audit/ai/*` endpoints plus
+  `GET api/audit/ai/capabilities` with per-plan `included` flags.
+- The `Audit.AI.Infrastructure` project remains empty (context assembly needed no
+  infrastructure); `OpenClaw` config keys remain unread until Phase 7.
+
 ### API surface
 
 `api/audit/*` route convention. Controllers: clients, engagements (core/team/plan/materiality/
@@ -123,11 +143,11 @@ everything. **Still never applied to a live Supabase project.**
 
 ## What remains
 
-1. **Phase 3 — Audit AI** (next).
-2. Accounting Core, Accounting AI, Accounting↔Audit integration (the
-   `LedganceAccountingContextSource` adapter), agentic AI.
-3. **Frontend (Phase 8)** — nothing this phase; all product pages still mock-driven, dashboard
-   sub-routes still 404, no onboarding UI. The frontend has no knowledge of the new API.
+1. **Phase 4 — Accounting Core MVP** (next).
+2. Accounting AI (Phase 5), Accounting↔Audit integration (Phase 6 — the
+   `LedganceAccountingContextSource` adapter), agentic AI / OpenClaw (Phase 7).
+3. **Frontend (Phase 8)** — all product pages still mock-driven, dashboard sub-routes still
+   404, no onboarding UI, no AI UX. The frontend has no knowledge of the Phase 2–3 API.
 4. Stripe (Phase 9), security review, quality, polish.
 
 ---
@@ -135,9 +155,14 @@ everything. **Still never applied to a live Supabase project.**
 ## Known issues and limitations
 
 1. **No Supabase path has ever executed against a live project** — now including all Phase 2
-   persistence, storage upload/signed URLs, jsonb round-trips and the two migrations. Apply
+   persistence, storage upload/signed URLs, jsonb round-trips and the three migrations. Apply
    migrations and smoke-test before trusting them; jsonb list mapping (`List<Guid>`,
    `List<ReviewNoteDoc>`) via the Supabase client is the most likely friction point.
+1a. **No AI call has run against a live provider.** The Ollama/OpenAI adapters and the
+   Anthropic SDK adapter compile and pass unit tests against fakes; response-shape assumptions
+   are unverified against real services. Evidence summarization uses metadata/description only
+   (no binary content extraction). AI usage metering is read-then-write without a concurrency
+   guard — adequate for MVP volumes.
 2. **`GetEngagementsQuery` lists all org engagements to any `engagements:read` holder** (names
    and statuses only); content behind detail endpoints is team-confined. Tighten in Phase 10 if
    list visibility should also be team-scoped.

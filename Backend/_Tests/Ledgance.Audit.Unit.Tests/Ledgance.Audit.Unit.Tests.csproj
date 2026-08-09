@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Ledgance.TestInfrastructure\Ledgance.TestInfrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Audit\AI\Ledgance.Audit.AI.Application\Ledgance.Audit.AI.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Audit\AI\Ledgance.Audit.AI.Domain\Ledgance.Audit.AI.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\Audit\Client\Ledgance.Audit.Client.Application\Ledgance.Audit.Client.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Audit\Engagement\Ledgance.Audit.Engagement.Application\Ledgance.Audit.Engagement.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Audit\Organization\Ledgance.Audit.Organization.Application\Ledgance.Audit.Organization.Application.csproj" />

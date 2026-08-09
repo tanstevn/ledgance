@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Ledgance.Audit.AI.Domain\Ledgance.Audit.AI.Domain.csproj" />
+    <ProjectReference Include="..\..\Engagement\Ledgance.Audit.Engagement.Application\Ledgance.Audit.Engagement.Application.csproj" />
     <ProjectReference Include="..\..\..\..\Shared\Ledgance.Shared.Application\Ledgance.Shared.Application.csproj" />
   </ItemGroup>
 

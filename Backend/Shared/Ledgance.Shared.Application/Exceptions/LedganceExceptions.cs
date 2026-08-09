@@ -28,6 +28,15 @@ namespace Ledgance.Shared.Application.Exceptions {
     }
 
     /// <summary>
+    /// Every configured AI provider failed for the requested workload. Surfaced as HTTP 503 so
+    /// the client can distinguish a provider outage from an application error.
+    /// </summary>
+    public class AiUnavailableException : Exception {
+        public AiUnavailableException(string message, Exception? innerException = null)
+            : base(message, innerException) { }
+    }
+
+    /// <summary>
     /// Signals that the caller's subscription does not allow the operation.
     /// Surfaced as HTTP 402 so the client can distinguish "upgrade required"
     /// from "not permitted for this role".

@@ -8,8 +8,8 @@ intent lives in `project-context.md`.
 | # | Phase | Status |
 | --- | --- | --- |
 | 1 | Foundation Infrastructure | **Completed** — verified by build, tests and an API smoke test |
-| 2 | Audit Core MVP | **Completed (backend)** — 98 tests passing; API smoke-tested; live-Supabase verification still outstanding |
-| 3 | Audit AI | Not Started |
+| 2 | Audit Core MVP | **Completed (backend)** — API smoke-tested; live-Supabase verification still outstanding |
+| 3 | Audit AI | **Completed (backend)** — 113 tests passing; live-provider verification still outstanding |
 | 4 | Accounting Core MVP | Not Started |
 | 5 | Accounting AI | Not Started |
 | 6 | Accounting ↔ Audit Integration | Not Started |
@@ -73,6 +73,28 @@ Outstanding risk: no Supabase call has ever run against a live project — migra
 unapplied and the persistence/storage layer is verified by unit tests and compilation only.
 
 ---
+
+## Phase 3 — Audit AI (Completed, backend)
+
+Delivered: provider-agnostic AI abstractions (`AiWorkload`, `IAiCompletionService`,
+`IAiChatClient`, `IAiModelRouter`, `IAiUsageMeter`) in Shared.Application; the orchestrator
+enforcing authorization → tier → monthly units → context-size → routing → usage recording, with
+downward-only provider fallback (402 above-tier, 503 total failure); Ollama and OpenAI HTTP
+adapters and an Anthropic adapter on the official C# SDK; tier→model routing with
+`Ai:Routing` configuration override; the `ai_usage` table (migration 0003); the
+`AuditAiCapabilities` catalog (10 capabilities across basic/advanced/reasoning tiers); 10 Audit
+AI slices — assistant/Q&A, document summarization, risk suggestions, procedure suggestions,
+working-paper drafting, finding drafting, risk analysis, anomaly detection, review assistance,
+report drafting — all team-confined, activity-logged and proposal-only; `api/audit/ai/*`
+endpoints incl. a capability listing with per-plan `included` flags; 15 new tests (orchestrator
+gating/fallback/truncation + slice authorization and workflows).
+
+Deliberately not included: Accounting AI (Phase 5), agentic/OpenClaw (Phase 7 — the `agentic`
+tier routes to Anthropic until then), evidence binary content extraction, frontend AI UX
+(Phase 8).
+
+Outstanding risk: no AI call has run against a live provider; adapters are verified by
+compilation and unit tests against fakes.
 
 ## Note on phases 8–13
 
