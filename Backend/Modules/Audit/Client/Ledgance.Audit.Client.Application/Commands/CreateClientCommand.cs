@@ -26,21 +26,12 @@ namespace Ledgance.Audit.Client.Application.Commands {
     }
 
     public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, Result<CreateClientCommandResult>> {
-        private readonly IValidator<CreateClientCommand> _validator;
-
-        public CreateClientCommandHandler(IValidator<CreateClientCommand> validator) {
-            _validator = validator;
-        }
-
-        public async Task<Result<CreateClientCommandResult>> HandleAsync(CreateClientCommand request, CancellationToken ct) {
-            ArgumentNullException.ThrowIfNull(request);
-            await _validator.ValidateAndThrowAsync(request);
-
+        public Task<Result<CreateClientCommandResult>> HandleAsync(CreateClientCommand request, CancellationToken ct) {
             // Implementation here and
-            // right value to pass as argument for Result<T>.Success 
+            // right value to pass as argument for Result<T>.Success
 
-            return Result<CreateClientCommandResult>
-                .Success(new CreateClientCommandResult { Id = 1 });
+            return Task.FromResult(Result<CreateClientCommandResult>
+                .Success(new CreateClientCommandResult { Id = 1 }));
         }
     }
 }

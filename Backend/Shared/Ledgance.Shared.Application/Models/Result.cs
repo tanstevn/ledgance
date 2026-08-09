@@ -44,7 +44,7 @@
             };
         }
 
-        public new static PaginatedResult<T> Error(string error) {
+        public static PaginatedResult<T> Error(string error) {
             return new() {
                 Errors = new List<string> {
                     error

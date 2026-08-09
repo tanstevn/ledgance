@@ -24,26 +24,17 @@ namespace Ledgance.Audit.Client.Application.Queries {
     }
 
     public class GetClientInfoByIdQueryHandler : IRequestHandler<GetClientInfoByIdQuery, Result<GetClientInfoByIdQueryResult>> {
-        private readonly IValidator<GetClientInfoByIdQuery> _validator;
-
-        public GetClientInfoByIdQueryHandler(IValidator<GetClientInfoByIdQuery> validator) {
-            _validator = validator;
-        }
-
-        public async Task<Result<GetClientInfoByIdQueryResult>> HandleAsync(GetClientInfoByIdQuery request, CancellationToken ct) {
-            ArgumentNullException.ThrowIfNull(request);
-            await _validator.ValidateAndThrowAsync(request);
-
+        public Task<Result<GetClientInfoByIdQueryResult>> HandleAsync(GetClientInfoByIdQuery request, CancellationToken ct) {
             // Implementation here and
-            // right value to pass as argument for Result<T>.Success 
-            return Result<GetClientInfoByIdQueryResult>
+            // right value to pass as argument for Result<T>.Success
+            return Task.FromResult(Result<GetClientInfoByIdQueryResult>
                 .Success(new GetClientInfoByIdQueryResult {
                     Id = request.Id,
                     Name = "Sample Name",
                     Email = "sample@example.com",
                     Phone = "123-456-7890",
                     Industry = "Sample Industry"
-                });
+                }));
         }
     }
 }

@@ -5,10 +5,11 @@ using System.Reflection;
 namespace Ledgance.Shared.Infrastructure.Mediator {
     public static class DependencyInjection {
         public static void AddMediatorFromAssemblies(this IServiceCollection services, params Assembly[] assemblies) {
+            services.AddScoped<IMediator, Mediator>();
+
             foreach (var assembly in assemblies) {
                 var assemblyTypes = assembly.GetTypes();
 
-                services.AddScoped<IMediator, Mediator>();
                 services.AddRequestHandlers(assemblyTypes);
                 services.AddPipelineBehaviors(assemblyTypes);
             }

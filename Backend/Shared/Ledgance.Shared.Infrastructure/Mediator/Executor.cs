@@ -18,8 +18,8 @@ namespace Ledgance.Shared.Infrastructure.Mediator {
 
             var behaviorsOrder = behaviors.OrderByDescending(
                 behavior => behavior.GetType()
-                    .GetCustomAttribute<PipelineOrderAttribute>()!
-                    .Order);
+                    .GetCustomAttribute<PipelineOrderAttribute>()
+                    ?.Order ?? short.MaxValue);
 
             var aggregateResult = behaviorsOrder.Aggregate(finalHandler, (next, behavior) =>
                 () => behavior.HandleAsync((TRequest)request, next, ct));
