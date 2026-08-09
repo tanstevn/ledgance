@@ -1,185 +1,81 @@
 # Implementation Status
 
-**Last updated:** 2026-08-10 — end of Phase 1 (Foundation & Shared Infrastructure)
+Phase tracker. Detail about the current implementation lives in `project-state.md`; product
+intent lives in `project-context.md`.
 
-## Legend
-
-`—` not started · `◐` scaffolded / partial · `●` implemented
-
----
-
-## Phase progress
+**Last verified:** 2026-08-10, against the repository.
 
 | # | Phase | Status |
 | --- | --- | --- |
-| 0 | Repository Discovery & Architecture | ● complete |
-| 1 | Foundation & Shared Infrastructure | ● complete |
-| 2 | Audit Core MVP | — |
-| 3 | Audit AI | — |
-| 4 | Accounting Core MVP | — |
-| 5 | Accounting AI | — |
-| 6 | Accounting ↔ Audit Integration | — |
-| 7 | OpenClaw / Agentic AI | — |
-| 8 | Frontend & UI/UX | ◐ marketing + shell exist; product pages still mock-driven |
-| 9 | Stripe & Subscription Finalization | ◐ entitlement foundation done; Stripe not started |
-| 10 | Security & Authorization | ◐ foundation done; product permissions pending |
-| 11 | Testing & Quality | ◐ harness + 41 tests over the foundation |
-| 12 | Product Polish | — |
-| 13 | Final MVP Review | — |
+| 1 | Foundation Infrastructure | **Completed** — verified by build, tests and an API smoke test |
+| 2 | Audit Core MVP | Not Started |
+| 3 | Audit AI | Not Started |
+| 4 | Accounting Core MVP | Not Started |
+| 5 | Accounting AI | Not Started |
+| 6 | Accounting ↔ Audit Integration | Not Started |
+| 7 | OpenClaw / Agentic AI | Not Started |
+| 8 | Frontend & UI/UX | Not Started |
+| 9 | Stripe & Subscriptions | Not Started |
+| 10 | Security & Authorization Review | Not Started |
+| 11 | Testing & Quality | Not Started |
+| 12 | Product Polish | Not Started |
+| 13 | Final MVP Review | Not Started |
 
 ---
 
-## Verification
+## Phase 1 — Foundation Infrastructure (Completed)
 
-| Check | Result |
-| --- | --- |
-| `dotnet build Ledgance.slnx` | succeeded, 0 errors, 0 C# warnings |
-| `dotnet test Ledgance.slnx` | 41 passed, 0 failed (38 shared, 3 audit) |
-| `npx tsc --noEmit` | clean |
-| `npm run build` | compiled successfully, lint clean |
+Delivered:
 
----
+- **Identity and organization context** — Supabase Auth JWT validation (symmetric secret or
+  JWKS), `CurrentUserMiddleware` resolving `CurrentUser` from verified claims plus
+  `organization_members`, `OrganizationRole`, and a startup-populated `PermissionRegistry`
+  modules extend.
+- **Server-side authorization** — a fallback policy requiring authentication on every endpoint,
+  plus a default-deny `AuthorizationBehavior` enforcing `[RequiresPermission]`.
+- **Organization isolation** — three layers: the authorization behavior, `SupabaseRepository`
+  filtering/stamping/guarding every `IOrganizationOwned` model, and row-level security in
+  `supabase/migrations/0001_foundation.sql`.
+- **Supabase data access** — official Supabase C# client, no EF Core; a reusable tenant-scoped
+  repository that still exposes the native query builder.
+- **Entitlement foundation** — all nine plans in one `SubscriptionPlanCatalog`, resolution
+  through catalogue → configuration → per-organization overrides, capability gating via
+  `[RequiresEntitlement]` and limit checks via `EntitlementSet`, surfaced as HTTP 402.
+- **Shared application foundation** — four pipeline behaviors (logging, authorization,
+  entitlement, validation) on the existing custom Mediator; extended error handling; scoped CORS;
+  `GET /api/session`.
+- **Test foundation** — `Ledgance.TestInfrastructure` with `MediatorTestHarness` and fakes;
+  41 passing tests; no test requires real credentials.
+- **Configuration** — placeholder-only committed settings; real values in git-ignored
+  `appsettings.local.json` and `.env.local`.
+- **Frontend foundation** — Supabase Auth replacing the previous stub, bearer-token API layer,
+  `QueryClientProvider`, `useSession`, `next-themes`.
 
-## Backend
-
-25 projects on `net10.0`.
-
-### Shared.Application
-
-| Component | Status |
-| --- | --- |
-| Mediator abstractions | ● |
-| `Result<T>` / `PaginatedResult<T>` | ● |
-| `QueryableExtensions` | ● (LINQ-to-objects; no Supabase counterpart yet) |
-| `CurrentUser`, `ICurrentUserAccessor`, `ICurrentUserInitializer` | ● |
-| `OrganizationRole`, `PermissionRegistry`, `SharedPermissions` | ● |
-| `[AllowAnonymousRequest]`, `[RequiresPermission]` | ● |
-| `UnauthenticatedException`, `ForbiddenException`, `EntitlementException` | ● |
-| `ProductModule`, `PlanCode`, `Entitlements`, `AiTiers` | ● |
-| `EntitlementSet`, `IEntitlementService`, `ISubscriptionReader` | ● |
-| `SubscriptionPlanCatalog` (all 9 plans) | ● |
-| `[RequiresEntitlement]` | ● |
-
-### Shared.Infrastructure
-
-| Component | Status |
-| --- | --- |
-| Mediator implementation | ● executor cache added; duplicate `IMediator` registration and the `[PipelineOrder]` NRE fixed |
-| `LoggingBehavior` (0) | ● |
-| `AuthorizationBehavior` (100) | ● default-deny + permission checks |
-| `EntitlementBehavior` (200) | ● capability checks |
-| `ValidationBehavior` (300) | ● FluentValidation |
-| `SupabaseSettings` + client registration | ● service-role singleton, best-effort init |
-| `SupabaseRepository<TModel>` | ● tenant-scoped CRUD + scoped query builder |
-| `IEntityModel`, `IOrganizationOwned`, `TenantScope` | ● |
-| Persistence models (organization, member, subscription) | ● |
-| `CurrentUserContext`, `CurrentUserMiddleware` | ● |
-| `IOrganizationMembershipReader` | ● Supabase-backed |
-| `SupabaseSubscriptionReader`, `EntitlementService` | ● |
-| `AddSupabaseAuthentication` (JWT: symmetric secret or JWKS) | ● |
-| `AddLedganceSharedInfrastructure` | ● |
-| Storage abstraction | — Phase 2 |
-| AI abstractions | — Phase 3 |
-| Stripe client | — Phase 9 |
-
-### API host
-
-| Component | Status |
-| --- | --- |
-| Composition root | ● dead `Neon` connection string removed |
-| Authentication + fallback authorization policy | ● |
-| `CurrentUserMiddleware` wired after authorization | ● |
-| CORS from `Cors:AllowedOrigins` | ● allow-any-origin removed |
-| `ExceptionHandlerMiddleware` | ● 401/403/402 mapped; catch-all added; detail withheld |
-| `GET /api/session` | ● |
-| OpenAPI + Scalar (anonymous, non-Production) | ● |
-| `AuditClientController` | ◐ 3 endpoints on stub handlers |
-| 7 module controllers | — empty, Phase 2/4 |
-
-### Modules
-
-All eight Application projects now reference `Ledgance.Shared.Application`, FluentValidation and
-their own Domain project. Both AI Infrastructure projects reference their Application, Domain and
-`Ledgance.Shared.Infrastructure`. `Class1.cs` placeholders were removed from every Domain and
-Infrastructure project.
-
-Business content is still Phase 2+: `Ledgance.Audit.Client.Application` holds one command and
-three queries against stub data; every other module holds only its `MediatorAnchor`.
-
-### Database
-
-`supabase/migrations/0001_foundation.sql` — `organizations`, `organization_members`,
-`organization_subscriptions`, the `is_organization_member` security-definer helper, and
-read-only RLS policies for authenticated users. **Not yet applied to a project** (no credentials).
-
-### Tests
-
-| Project | Tests |
-| --- | --- |
-| `_Tests/Ledgance.TestInfrastructure` | shared harness: `MediatorTestHarness`, `FakeCurrentUserAccessor`, `FakeSubscriptionReader`, `FakeEntitlementService`, `TestIdentity` |
-| `_Tests/Ledgance.Shared.Unit.Tests` | 38 — permission registry, entitlement set and catalogue, entitlement resolution and overrides, the four behaviors and their ordering, tenant scoping |
-| `_Tests/Ledgance.Audit.Unit.Tests` | 3 — the client slice through the real pipeline |
-| `_Tests/Ledgance.Accounting.Unit.Tests` | 0 — wired, populated in Phase 4 |
-
-Convention: slice tests dispatch through `MediatorTestHarness` so authorization, entitlements and
-validation are exercised exactly as in production. No test requires real credentials.
+Not delivered by Phase 1, by design: any Audit or Accounting business capability, Stripe, and
+any AI code.
 
 ---
 
-## Frontend
+## Phase 2 — Audit Core MVP (Not Started)
 
-| Area | Status |
-| --- | --- |
-| Next.js App Router, TS strict, Tailwind, shadcn/ui | ● |
-| `lib/supabase.ts` browser client (anon key) | ● |
-| `components/auth-context.tsx` — Supabase Auth | ● sign in / sign up / sign out / password reset / access token |
-| `util/http.ts` | ● bearer token attached; API `errors` surfaced |
-| `components/query-provider.tsx` | ● `QueryClientProvider` mounted |
-| `hooks/session.ts` — `useSession()` | ● not yet consumed by a page |
-| `components/theme-context.tsx` | ● now backed by `next-themes`, which also fixes the unprovided `useTheme` in `ui/sonner.tsx` |
-| `.env.example` / `.env.local` | ● placeholders only |
-| Marketing site, `/login`, `/signup`, `/dashboard` shell | ● UI complete |
-| Dashboard data | ◐ still `lib/mock-data.ts` |
-| Dashboard sub-routes | — nav links to `/dashboard/{clients,engagements,documents,working-papers,trial-balance,team}` still 404 |
-| Accounting product UI | — |
+Scope per `project-context.md` §2: clients, engagements, engagement teams, audit planning,
+materiality, risk assessment, audit procedures, working papers, evidence, findings, review
+workflows, audit reporting, audit history and activity, plus external accounting context import
+(CSV, Excel, trial balance, general ledger, financial statements, supporting documents).
 
----
+Known prerequisites:
 
-## Known issues carried into Phase 2
-
-1. **Supabase has never been contacted.** Every Supabase path — auth, membership, subscriptions,
-   repository — compiles and is unit-tested against fakes, but has not run against a real
-   project. The migration must be applied and a smoke test run before Phase 2 relies on it.
-2. **No organisation provisioning.** Nothing creates an `organizations` row or the first
-   `organization_members` row, so a freshly signed-up user authenticates and is then rejected
-   with "not a member of any organization". Sign-up onboarding is Phase 2 work.
-3. **Frontend product pages are mock-driven** and the dashboard nav links 404.
-4. **`Ledgance.Accounting.Unit.Tests` has no tests** — wired but empty until Phase 4.
-5. **`QueryableExtensions.PaginateAsync` is LINQ-to-objects** and needs a Supabase-aware
-   counterpart (`Range`/`Count`) before paged endpoints hit the database.
-6. **`NU1903`** — transitive `Microsoft.OpenApi` 2.0.0 carries a high-severity advisory; it
-   resolves when `Microsoft.AspNetCore.OpenApi` ships a patched dependency.
-7. **`npm audit`** reports advisories in the existing frontend dependency tree; not triaged.
-8. **No CI.** `.github/workflows/` is still empty.
+1. Organization provisioning at sign-up — without it an authenticated user has no organization
+   and every request is rejected.
+2. Applying and smoke-testing `supabase/migrations/0001_foundation.sql` against a real project.
+3. Replacing the stubbed `Ledgance.Audit.Client.Application` handlers, which currently return
+   hard-coded sample data.
+4. Registering Audit permissions into `PermissionRegistry`.
 
 ---
 
-## Changes made in Phase 1
+## Note on phases 8–13
 
-**Added** — identity, authorization, entitlement and exception primitives in
-`Shared.Application`; Supabase settings, client, tenant-scoped repository, persistence models,
-membership reader, current-user middleware, subscription reader, entitlement service, JWT
-authentication and the four pipeline behaviors in `Shared.Infrastructure`; `GET /api/session`;
-`supabase/migrations/0001_foundation.sql`; `Ledgance.TestInfrastructure` and
-`Ledgance.Shared.Unit.Tests`; frontend Supabase client, query provider, session hook and env
-files.
-
-**Changed** — module project references wired; `ExceptionHandlerMiddleware` extended;
-composition root rebuilt around authentication, scoped CORS and default-deny; mediator
-registration, executor ordering and dispatch caching fixed; the two Audit client handlers
-simplified onto `ValidationBehavior`; frontend auth and theme contexts rewritten onto Supabase
-Auth and `next-themes`; `util/http.ts` error handling and auth header.
-
-**Removed** — `backend/Class1.cs` (dead EF Core test base; its Arrange/Act/Assert intent is
-carried by `MediatorTestHarness`); ten `Class1.cs` placeholders; the redundant
-`frontend/.eslintrc.json`; the dead `Neon` connection-string lookup; `AllowAnyOrigin` CORS.
+Some frontend surface — the marketing site, `/login`, `/signup` and the `/dashboard` shell —
+pre-existed Phase 1 and remains mock-driven. That does not make Phase 8 started; the product UI,
+its data wiring and its missing routes are all still to do.

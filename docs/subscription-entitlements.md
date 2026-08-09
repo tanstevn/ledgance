@@ -1,5 +1,8 @@
 # Subscriptions & Entitlements
 
+`project-context.md` §9–§12 is authoritative for plan structure and intent. This document covers
+how entitlements are modelled and enforced in code.
+
 ## 1. Principle
 
 Plan knowledge lives in **one place**. Domain code asks "am I allowed to do X / how much of X
@@ -17,7 +20,7 @@ A plan-name comparison anywhere outside the entitlement catalogue is a defect.
 
 | Plan | Users | Positioning |
 | --- | --- | --- |
-| Free | small | Genuinely usable for a first engagement |
+| Free | up to 2 | 1 client, 2 engagements, limited AI — a genuinely useful entry experience |
 | Professional | up to 30 | Working audit teams |
 | Organization | up to 75 | Multi-team firms |
 | Firm | up to 150 | Large firms |

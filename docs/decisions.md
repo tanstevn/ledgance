@@ -52,16 +52,29 @@ filtering. `TenantScope.Stamp`/`Guard` are unit-tested directly.
 
 ---
 
-## ADR-010 — Documentation lives in `/docs` and is updated per phase
+## ADR-010 — The repository is the persistent context; conversations are not
 
-**Decision.** Seven documents form the durable project context: `architecture.md`,
-`product-requirements.md`, `module-boundaries.md`, `subscription-entitlements.md`,
-`ai-architecture.md`, `implementation-status.md`, `decisions.md`.
+**Decision.** A new session must be able to continue with no access to prior conversation, by
+reading, in order: `CLAUDE.md` (permanent rules) → `docs/project-context.md` (what the product
+is) → `docs/project-state.md` (where the implementation is) →
+`docs/implementation-status.md` (phase tracker) → `decisions.md`, `architecture.md`,
+`module-boundaries.md`, `subscription-entitlements.md`, `ai-architecture.md`,
+`product-requirements.md` as needed.
 
-**Why.** The build spans many phases. Context that only exists in a conversation is lost.
+Two separations are deliberate: **context vs state** (what the product *should be* vs where the
+code *currently is*), and **intent vs truth** (documentation records intent; **the code is the
+source of truth**). Where they disagree, inspect the code and correct the documentation.
 
-**Consequence.** A phase that changes architecture also updates the relevant document and adds
-an ADR here. `implementation-status.md` is updated at the end of every phase.
+`ai-architecture.md` additionally marks every section *implemented* or *planned*, because
+describing unbuilt AI as if it existed is the failure mode most likely to mislead a later
+session.
+
+**Why.** The build spans many phases and many context windows. Anything that lives only in a
+conversation is lost.
+
+**Consequence.** A phase updates `project-state.md` and `implementation-status.md` on
+completion, and adds an ADR here only for durable decisions — not for a running work log. No
+development journal is kept.
 
 ---
 

@@ -11,7 +11,7 @@ namespace Ledgance.Shared.Application.Subscriptions {
 
         private static readonly Dictionary<PlanCode, IReadOnlyDictionary<string, string>> Defaults = new() {
             [PlanCode.Free] = Plan(
-                users: "3", clients: "3", engagements: "3", entities: "1", transactions: "300",
+                users: "2", clients: "1", engagements: "2", entities: "1", transactions: "300",
                 storage: Gb(2), aiUnits: "200", aiTier: AiTiers.Basic, aiContext: "16000",
                 advancedAnalysis: No, advancedReview: No, automation: No,
                 integrations: No, apiAccess: No, contextSharing: No, enterpriseSupport: No),

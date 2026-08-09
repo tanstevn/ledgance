@@ -1,5 +1,8 @@
 # Ledgance — Product Requirements
 
+`project-context.md` is authoritative for product objectives, platform boundaries, AI strategy
+and subscription structure. This document holds the MVP capability scope in more detail.
+
 ## 1. Positioning
 
 Ledgance is a SaaS ecosystem of two professional products sharing an account, an

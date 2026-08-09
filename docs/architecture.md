@@ -1,5 +1,9 @@
 # Ledgance — Architecture
 
+This document states how the system is designed and the rules that govern it. It is **not** a
+statement of what is built — see `project-state.md` for that. Sections describing Audit,
+Accounting and cross-context integration are binding design rules for work that has not started.
+
 ## 1. Shape of the system
 
 Ledgance is a **modular monolith** hosting two conceptually separate products:
