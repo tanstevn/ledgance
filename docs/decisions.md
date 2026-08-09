@@ -4,6 +4,79 @@ Newest first. Each entry: decision, why, consequence.
 
 ---
 
+## ADR-017 — Engagement content is confined to the assigned team
+
+**Decision.** Engagement-scoped records (planning, materiality, risks, procedures, working
+papers, evidence, findings, review notes, reports, trial balance, activity) are accessible only
+to users assigned to that engagement's team, plus organization Admins/Owners for oversight.
+Organization permissions (`audit:engagements:*`) gate the operation type; team membership gates
+the specific engagement; engagement-role rules (sign-off = team Partner, working-paper approval
+= team Manager/Partner, preparer ≠ reviewer/approver) gate professional responsibilities.
+Even an org Owner cannot sign off an engagement without being its assigned Partner.
+
+**Why.** Audit confidentiality works this way in real firms: staff see their engagements, not
+the whole portfolio, and professional sign-off authority attaches to the engagement role, not
+administrative rank.
+
+**Consequence.** `IEngagementAccessGuard.EnsureMemberAsync` is called at the top of every
+engagement-scoped handler. Creating an engagement auto-assigns the creator as Partner so an
+engagement never exists without someone able to sign it off; the last Partner cannot be removed.
+
+---
+
+## ADR-016 — One Engagement module hosts all engagement-scoped features
+
+**Decision.** Planning, materiality, risks, procedures, working papers, evidence, findings,
+review, reports and trial-balance import live as folders (vertical slices) inside a single
+`Modules/Audit/Engagement` project trio, not as separate project trios per capability. Closely
+related requests share one file per feature folder.
+
+**Why.** These capabilities share one aggregate root, one access guard and one lifecycle; ten
+project trios would add csproj ceremony without any boundary that matters. The split that must
+stay cheap is Audit vs Accounting, not engagement-feature vs engagement-feature.
+
+**Consequence.** Cross-feature reads within Audit go through feature-owned ports
+(`IClientLookup` in Engagement; `IClientEngagementCounter` implemented by Engagement for
+Client), keeping even intra-context coupling explicit.
+
+---
+
+## ADR-015 — Organization onboarding lives in Shared; principal vs organization context
+
+**Decision.** `ProvisionOrganizationCommand` (Shared.Application) + its handler
+(Shared.Infrastructure) create the organization and the Owner membership at first sign-in.
+The middleware no longer rejects authenticated users without membership; it records an
+`AuthenticatedPrincipal`, and `AuthorizationBehavior` requires full organization context by
+default — `[AllowWithoutOrganization]` (onboarding only) relaxes just the membership
+requirement. Organizations are platform-scoped: one organization spans Audit and Accounting.
+
+**Why.** Sign-up must complete before any organization exists, and organizations are not an
+Audit or Accounting concept, so neither product module can own provisioning without the other
+depending on it.
+
+**Consequence.** `GET /api/session` returns `needsOnboarding: true` for a member-less user;
+`POST /api/onboarding/organization` is the only meaningful call in that state. Membership rows
+now carry `display_name`/`email` so team pickers don't need auth.users access.
+
+---
+
+## ADR-014 — Domain projects may reference Shared.Application as a shared kernel
+
+**Decision.** `*.Domain` projects reference `Ledgance.Shared.Application` — for
+`DomainRuleException` and similar primitives only. Domain still references no infrastructure,
+no other module, and nothing else. `DomainRuleException` maps to HTTP 409, distinguishing
+"the state does not allow this" from validation (400), permission (403) and entitlement (402)
+failures.
+
+**Why.** Domain invariants need a typed failure the API can translate; duplicating the
+exception per Domain project is worse than a narrow shared-kernel dependency.
+
+**Consequence.** The former "`*.Domain` → nothing" rule is amended in `module-boundaries.md`.
+Any use of Shared.Application types beyond exceptions/primitives in a Domain project is still a
+violation.
+
+---
+
 ## ADR-013 — Lint policy: vendored `components/ui` is exempt, not patched
 
 **Decision.** `eslint.config.mjs` disables `no-explicit-any`, `no-empty-object-type`,

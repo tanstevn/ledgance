@@ -47,6 +47,13 @@ namespace Ledgance.Api.Middlewares {
                 await WriteErrorResponse(context,
                     HttpStatusCode.Forbidden, errorObject);
             }
+            catch (DomainRuleException ex) {
+                var errorObject = Result<object>
+                    .Error(ex.Message);
+
+                await WriteErrorResponse(context,
+                    HttpStatusCode.Conflict, errorObject);
+            }
             catch (EntitlementException ex) {
                 var errorObject = Result<object>
                     .Error(ex.Message);

@@ -7,7 +7,9 @@ namespace Ledgance.Shared.Infrastructure.Identity {
     /// <summary>
     /// Turns a verified Supabase access token into the organization context every downstream
     /// component relies on. Membership comes from our own tables, never from a client-supplied
-    /// value, so a caller cannot select the organization they operate in.
+    /// value, so a caller cannot select the organization they operate in. A user without any
+    /// membership keeps only the authenticated principal — the authorization pipeline decides
+    /// whether that is enough (it is only for onboarding).
     /// </summary>
     public sealed class CurrentUserMiddleware {
         private const string OrganizationIdClaim = "org_id";
@@ -31,19 +33,23 @@ namespace Ledgance.Shared.Infrastructure.Identity {
             }
 
             var userId = ReadUserId(principal);
-            var membership = ReadMembershipClaims(principal)
-                ?? await membershipReader.FindAsync(userId, context.RequestAborted)
-                ?? throw new ForbiddenException(
-                    "This account is not a member of any organization.");
+            var email = principal.FindFirstValue(ClaimTypes.Email)
+                ?? principal.FindFirstValue("email")
+                ?? string.Empty;
 
-            initializer.Set(new CurrentUser(
-                userId,
-                principal.FindFirstValue(ClaimTypes.Email)
-                    ?? principal.FindFirstValue("email")
-                    ?? string.Empty,
-                membership.OrganizationId,
-                membership.Role,
-                permissions.For(membership.Role)));
+            initializer.SetPrincipal(new AuthenticatedPrincipal(userId, email));
+
+            var membership = ReadMembershipClaims(principal)
+                ?? await membershipReader.FindAsync(userId, context.RequestAborted);
+
+            if (membership is not null) {
+                initializer.Set(new CurrentUser(
+                    userId,
+                    email,
+                    membership.OrganizationId,
+                    membership.Role,
+                    permissions.For(membership.Role)));
+            }
 
             await _next(context);
         }

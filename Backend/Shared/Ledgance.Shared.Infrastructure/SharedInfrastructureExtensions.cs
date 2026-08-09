@@ -1,5 +1,7 @@
+using Ledgance.Shared.Application.Activity;
 using Ledgance.Shared.Application.Identity;
 using Ledgance.Shared.Application.Subscriptions;
+using Ledgance.Shared.Infrastructure.Activity;
 using Ledgance.Shared.Infrastructure.Identity;
 using Ledgance.Shared.Infrastructure.Subscriptions;
 using Ledgance.Shared.Infrastructure.Supabase;
@@ -47,10 +49,19 @@ namespace Ledgance.Shared.Infrastructure {
                 provider.GetRequiredService<CurrentUserContext>());
             services.AddScoped<ICurrentUserInitializer>(provider =>
                 provider.GetRequiredService<CurrentUserContext>());
+            services.AddScoped<IAuthenticatedPrincipalAccessor>(provider =>
+                provider.GetRequiredService<CurrentUserContext>());
 
             services.AddScoped<IOrganizationMembershipReader, OrganizationMembershipReader>();
+            services.AddScoped<IOrganizationDirectory, OrganizationDirectory>();
             services.AddScoped<ISubscriptionReader, SupabaseSubscriptionReader>();
             services.AddScoped<IEntitlementService, EntitlementService>();
+
+            services.AddScoped<SupabaseActivityStore>();
+            services.AddScoped<IActivityRecorder>(provider =>
+                provider.GetRequiredService<SupabaseActivityStore>());
+            services.AddScoped<IActivityReader>(provider =>
+                provider.GetRequiredService<SupabaseActivityStore>());
 
             services.AddScoped(typeof(SupabaseRepository<>));
 

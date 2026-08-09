@@ -31,6 +31,12 @@ namespace Ledgance.Shared.Infrastructure.Supabase.Models {
         [Column("role")]
         public string Role { get; set; } = string.Empty;
 
+        [Column("display_name")]
+        public string DisplayName { get; set; } = string.Empty;
+
+        [Column("email")]
+        public string Email { get; set; } = string.Empty;
+
         [Column("is_default")]
         public bool IsDefault { get; set; }
 

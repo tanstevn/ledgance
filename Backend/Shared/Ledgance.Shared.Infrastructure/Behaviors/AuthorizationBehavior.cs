@@ -9,6 +9,8 @@ namespace Ledgance.Shared.Infrastructure.Behaviors {
     /// <summary>
     /// Default-deny: a request without <see cref="AllowAnonymousRequestAttribute"/> requires an
     /// authenticated caller with an organization context, regardless of transport-level checks.
+    /// <see cref="AllowWithoutOrganizationAttribute"/> relaxes only the membership requirement,
+    /// for onboarding.
     /// </summary>
     [PipelineOrder(100)]
     public sealed class AuthorizationBehavior<TRequest, TResponse>
@@ -16,6 +18,9 @@ namespace Ledgance.Shared.Infrastructure.Behaviors {
         where TRequest : notnull {
         private static readonly bool AllowsAnonymous =
             typeof(TRequest).GetCustomAttribute<AllowAnonymousRequestAttribute>() is not null;
+
+        private static readonly bool AllowsWithoutOrganization =
+            typeof(TRequest).GetCustomAttribute<AllowWithoutOrganizationAttribute>() is not null;
 
         private static readonly string[] RequiredPermissions =
             typeof(TRequest).GetCustomAttributes<RequiresPermissionAttribute>()
@@ -31,6 +36,11 @@ namespace Ledgance.Shared.Infrastructure.Behaviors {
         public Task<TResponse> HandleAsync(TRequest request,
             RequestHandlerDelegate<TResponse> next, CancellationToken ct) {
             if (AllowsAnonymous) {
+                return next();
+            }
+
+            if (AllowsWithoutOrganization) {
+                _currentUser.RequirePrincipal();
                 return next();
             }
 

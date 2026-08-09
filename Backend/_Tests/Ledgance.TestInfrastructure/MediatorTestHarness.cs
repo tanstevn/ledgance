@@ -22,6 +22,7 @@ namespace Ledgance.TestInfrastructure {
 
             _services.AddSingleton<ICurrentUserAccessor>(CurrentUser);
             _services.AddSingleton<ICurrentUserInitializer>(CurrentUser);
+            _services.AddSingleton<IAuthenticatedPrincipalAccessor>(CurrentUser);
             _services.AddSingleton<IEntitlementService>(Entitlements);
             _services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>),
                 typeof(NullLogger<>));

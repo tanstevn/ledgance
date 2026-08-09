@@ -70,9 +70,11 @@ docs/
 frontend/
 ```
 
-Allowed references: Application → Shared.Application + own Domain. Infrastructure → own
-Application/Domain + Shared.Infrastructure. Api → any Application/Infrastructure, never a Domain.
-Shared never references a module. Details in `docs/module-boundaries.md`.
+Allowed references: Domain → Shared.Application only (shared kernel: exceptions/primitives —
+ADR-014). Application → Shared.Application + own Domain. Infrastructure → own
+Application/Domain + Shared.Infrastructure (+ a sibling feature's Application to implement its
+port). Api → any Application/Infrastructure, never a Domain. Shared never references a module.
+Details in `docs/module-boundaries.md`.
 
 Organize by business capability, not by `Controllers/Services/DTOs/Repositories`. Keep business
 logic in the feature that owns it. Create an Infrastructure project only when a feature needs one.
@@ -100,11 +102,15 @@ Registered pipeline, outermost first:
 
 ### Slice conventions
 
-- One file per request: `XCommand`, `XCommandResult`, `XCommandValidator`, `XCommandHandler`.
-- Handlers return `Result<T>` / `PaginatedResult<T>`. Expected failures are results, not exceptions.
+- Command + result + validator + handler are colocated: one file per request, or one file per
+  closely-related request family within a feature folder.
+- Handlers return `Result<T>` / `PaginatedResult<T>`. Expected failures are results, not
+  exceptions; domain invariant violations throw `DomainRuleException` (→ HTTP 409).
 - **Handlers never call validators** — `ValidationBehavior` does.
+- Engagement-scoped handlers call `IEngagementAccessGuard.EnsureMemberAsync` first (ADR-017).
 - Every module Application assembly needs a `MediatorAnchor` and an entry in
-  `Ledgance.Api/DependencyInjection.cs`.
+  `Ledgance.Api/DependencyInjection.cs`; module permissions register in the
+  `AddLedganceSharedInfrastructure` callback.
 
 ---
 

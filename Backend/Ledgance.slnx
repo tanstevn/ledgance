@@ -27,6 +27,12 @@
   <Folder Name="/Modules/Audit/Client/">
     <Project Path="Modules/Audit/Client/Ledgance.Audit.Client.Application/Ledgance.Audit.Client.Application.csproj" />
     <Project Path="Modules/Audit/Client/Ledgance.Audit.Client.Domain/Ledgance.Audit.Client.Domain.csproj" />
+    <Project Path="Modules/Audit/Client/Ledgance.Audit.Client.Infrastructure/Ledgance.Audit.Client.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Audit/Engagement/">
+    <Project Path="Modules/Audit/Engagement/Ledgance.Audit.Engagement.Application/Ledgance.Audit.Engagement.Application.csproj" />
+    <Project Path="Modules/Audit/Engagement/Ledgance.Audit.Engagement.Domain/Ledgance.Audit.Engagement.Domain.csproj" />
+    <Project Path="Modules/Audit/Engagement/Ledgance.Audit.Engagement.Infrastructure/Ledgance.Audit.Engagement.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Modules/Audit/Organization/">
     <Project Path="Modules/Audit/Organization/Ledgance.Audit.Organization.Application/Ledgance.Audit.Organization.Application.csproj" />

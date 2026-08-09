@@ -1,4 +1,8 @@
 ﻿using Ledgance.Api.Middlewares;
+using Ledgance.Audit.Client.Application;
+using Ledgance.Audit.Client.Infrastructure;
+using Ledgance.Audit.Engagement.Application;
+using Ledgance.Audit.Engagement.Infrastructure;
 using Ledgance.Shared.Infrastructure;
 using Ledgance.Shared.Infrastructure.Authentication;
 using Ledgance.Shared.Infrastructure.Identity;
@@ -12,6 +16,7 @@ using AccountingOrgAnchor = Ledgance.Accounting.Organization.Application.Mediato
 using AccountingUserAnchor = Ledgance.Accounting.User.Application.MediatorAnchor;
 using AuditAIAnchor = Ledgance.Audit.AI.Application.MediatorAnchor;
 using AuditClientAnchor = Ledgance.Audit.Client.Application.MediatorAnchor;
+using AuditEngagementAnchor = Ledgance.Audit.Engagement.Application.MediatorAnchor;
 using AuditOrgAnchor = Ledgance.Audit.Organization.Application.MediatorAnchor;
 using AuditUserAnchor = Ledgance.Audit.User.Application.MediatorAnchor;
 
@@ -46,21 +51,30 @@ namespace Ledgance.Api {
                 typeof(AccountingUserAnchor).Assembly,
                 typeof(AuditAIAnchor).Assembly,
                 typeof(AuditClientAnchor).Assembly,
+                typeof(AuditEngagementAnchor).Assembly,
                 typeof(AuditOrgAnchor).Assembly,
                 typeof(AuditUserAnchor).Assembly
             };
 
-            // The shared assembly carries the cross-cutting pipeline behaviors, so it has to be
-            // part of the mediator scan alongside the modules that carry the handlers.
-            services.AddMediatorFromAssemblies([
-                .. moduleAssemblies,
-                typeof(SharedInfrastructureExtensions).Assembly
-            ]);
+            // The shared assemblies carry the cross-cutting pipeline behaviors and the
+            // onboarding slice, so they are part of the mediator/validator scans alongside the
+            // modules that carry the feature handlers.
+            var sharedAssemblies = new[] {
+                typeof(SharedInfrastructureExtensions).Assembly,
+                typeof(Ledgance.Shared.Application.Onboarding.ProvisionOrganizationCommand).Assembly
+            };
 
-            services.AddValidatorsFromAssemblies(moduleAssemblies);
+            services.AddMediatorFromAssemblies([.. moduleAssemblies, .. sharedAssemblies]);
+            services.AddValidatorsFromAssemblies([.. moduleAssemblies, .. sharedAssemblies]);
 
-            services.AddLedganceSharedInfrastructure(config);
+            services.AddLedganceSharedInfrastructure(config, registry => {
+                AuditClientPermissions.RegisterInto(registry);
+                AuditEngagementPermissions.RegisterInto(registry);
+            });
             services.AddSupabaseAuthentication(config);
+
+            services.AddAuditClientInfrastructure();
+            services.AddAuditEngagementInfrastructure();
 
             var allowedOrigins = config
                 .GetSection("Cors:AllowedOrigins")

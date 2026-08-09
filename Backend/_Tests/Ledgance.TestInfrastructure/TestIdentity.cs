@@ -30,14 +30,24 @@ namespace Ledgance.TestInfrastructure {
     }
 
     public sealed class FakeCurrentUserAccessor : ICurrentUserAccessor, ICurrentUserInitializer {
-        public FakeCurrentUserAccessor(CurrentUser? current = null) {
+        public FakeCurrentUserAccessor(CurrentUser? current = null,
+            AuthenticatedPrincipal? principal = null) {
             Current = current;
+            Principal = principal
+                ?? (current is null ? null : new AuthenticatedPrincipal(current.UserId, current.Email));
         }
 
         public CurrentUser? Current { get; private set; }
 
+        public AuthenticatedPrincipal? Principal { get; private set; }
+
+        public void SetPrincipal(AuthenticatedPrincipal principal) {
+            Principal = principal;
+        }
+
         public void Set(CurrentUser user) {
             Current = user;
+            Principal ??= new AuthenticatedPrincipal(user.UserId, user.Email);
         }
     }
 }

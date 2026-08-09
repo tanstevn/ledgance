@@ -8,7 +8,7 @@ intent lives in `project-context.md`.
 | # | Phase | Status |
 | --- | --- | --- |
 | 1 | Foundation Infrastructure | **Completed** — verified by build, tests and an API smoke test |
-| 2 | Audit Core MVP | Not Started |
+| 2 | Audit Core MVP | **Completed (backend)** — 98 tests passing; API smoke-tested; live-Supabase verification still outstanding |
 | 3 | Audit AI | Not Started |
 | 4 | Accounting Core MVP | Not Started |
 | 5 | Accounting AI | Not Started |
@@ -56,21 +56,21 @@ any AI code.
 
 ---
 
-## Phase 2 — Audit Core MVP (Not Started)
+## Phase 2 — Audit Core MVP (Completed, backend)
 
-Scope per `project-context.md` §2: clients, engagements, engagement teams, audit planning,
-materiality, risk assessment, audit procedures, working papers, evidence, findings, review
-workflows, audit reporting, audit history and activity, plus external accounting context import
-(CSV, Excel, trial balance, general ledger, financial statements, supporting documents).
+Delivered: organization onboarding; activity trail; Audit Client feature with real domain,
+persistence and entitlement limits; the new Engagement module covering engagements, teams,
+planning, materiality, risks, procedures, working papers with preparer/reviewer segregation,
+review notes, evidence with versioning and Supabase Storage, findings, audit reports, and
+CSV trial-balance import behind the Audit-owned `IAccountingContextSource` boundary;
+team-confinement authorization (ADR-017); `api/audit/*` API surface; migration
+`0002_audit_core.sql`; 57 Audit tests + 3 new Shared onboarding tests.
 
-Known prerequisites:
+Deliberately not included: any frontend work (Phase 8), the Ledgance Accounting adapter for
+accounting context (Phase 6), AI (Phase 3), Stripe (Phase 9).
 
-1. Organization provisioning at sign-up — without it an authenticated user has no organization
-   and every request is rejected.
-2. Applying and smoke-testing `supabase/migrations/0001_foundation.sql` against a real project.
-3. Replacing the stubbed `Ledgance.Audit.Client.Application` handlers, which currently return
-   hard-coded sample data.
-4. Registering Audit permissions into `PermissionRegistry`.
+Outstanding risk: no Supabase call has ever run against a live project — migrations are
+unapplied and the persistence/storage layer is verified by unit tests and compilation only.
 
 ---
 

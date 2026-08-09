@@ -19,6 +19,15 @@ namespace Ledgance.Shared.Application.Exceptions {
     }
 
     /// <summary>
+    /// A domain invariant or workflow rule rejected the operation. Surfaced as HTTP 409 so the
+    /// client can distinguish "the state does not allow this" from validation or permission errors.
+    /// </summary>
+    public class DomainRuleException : Exception {
+        public DomainRuleException(string message)
+            : base(message) { }
+    }
+
+    /// <summary>
     /// Signals that the caller's subscription does not allow the operation.
     /// Surfaced as HTTP 402 so the client can distinguish "upgrade required"
     /// from "not permitted for this role".

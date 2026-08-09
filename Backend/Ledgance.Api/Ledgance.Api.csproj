@@ -23,6 +23,9 @@
     <ProjectReference Include="..\Modules\Accounting\User\Ledgance.Accounting.User.Application\Ledgance.Accounting.User.Application.csproj" />
     <ProjectReference Include="..\Modules\Audit\AI\Ledgance.Audit.AI.Application\Ledgance.Audit.AI.Application.csproj" />
     <ProjectReference Include="..\Modules\Audit\Client\Ledgance.Audit.Client.Application\Ledgance.Audit.Client.Application.csproj" />
+    <ProjectReference Include="..\Modules\Audit\Client\Ledgance.Audit.Client.Infrastructure\Ledgance.Audit.Client.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Audit\Engagement\Ledgance.Audit.Engagement.Application\Ledgance.Audit.Engagement.Application.csproj" />
+    <ProjectReference Include="..\Modules\Audit\Engagement\Ledgance.Audit.Engagement.Infrastructure\Ledgance.Audit.Engagement.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Audit\Organization\Ledgance.Audit.Organization.Application\Ledgance.Audit.Organization.Application.csproj" />
     <ProjectReference Include="..\Modules\Audit\User\Ledgance.Audit.User.Application\Ledgance.Audit.User.Application.csproj" />
     <ProjectReference Include="..\Shared\Ledgance.Shared.Infrastructure\Ledgance.Shared.Infrastructure.csproj" />

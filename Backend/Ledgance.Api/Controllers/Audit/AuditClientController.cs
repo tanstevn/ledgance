@@ -5,7 +5,7 @@ using Ledgance.Shared.Application.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ledgance.Api.Controllers.Audit {
-    [Route("api/audit-client")]
+    [Route("api/audit/clients")]
     [ApiController]
     public class AuditClientController : ControllerBase {
         private readonly IMediator _mediator;
@@ -16,19 +16,34 @@ namespace Ledgance.Api.Controllers.Audit {
 
         [HttpPost]
         public async Task<Result<CreateClientCommandResult>> CreateClient(
-            [FromBody] CreateClientCommand command, 
-            CancellationToken ct) 
+            [FromBody] CreateClientCommand command, CancellationToken ct)
             => await _mediator.SendAsync(command, ct);
 
-        [HttpGet("info")]
-        public async Task<Result<GetClientInfoByIdQueryResult>> GetClientInfoById(
-            [FromQuery] GetClientInfoByIdQuery query,
-            CancellationToken ct) 
-            => await _mediator.SendAsync(query, ct);
+        [HttpPut("{id:guid}")]
+        public async Task<Result<bool>> UpdateClient(Guid id,
+            [FromBody] UpdateClientCommand command, CancellationToken ct) {
+            command.Id = id;
+            return await _mediator.SendAsync(command, ct);
+        }
 
-        [HttpGet("all")]
+        [HttpPost("{id:guid}/archive")]
+        public async Task<Result<bool>> ArchiveClient(Guid id, CancellationToken ct)
+            => await _mediator.SendAsync(new ArchiveClientCommand { Id = id }, ct);
+
+        [HttpGet]
         public async Task<Result<IEnumerable<GetClientsQueryResult>>> GetClients(
-            CancellationToken ct) 
-            => await _mediator.SendAsync(new GetClientsQuery(), ct);
+            [FromQuery] bool includeArchived, CancellationToken ct)
+            => await _mediator.SendAsync(
+                new GetClientsQuery { IncludeArchived = includeArchived }, ct);
+
+        [HttpGet("{id:guid}")]
+        public async Task<Result<GetClientInfoByIdQueryResult>> GetClientById(Guid id,
+            CancellationToken ct)
+            => await _mediator.SendAsync(new GetClientInfoByIdQuery { Id = id }, ct);
+
+        [HttpGet("paged")]
+        public async Task<PaginatedResult<GetPaginatedClientsQueryRow>> GetPaginatedClients(
+            [FromQuery] GetPaginatedClientsQuery query, CancellationToken ct)
+            => await _mediator.SendAsync(query, ct);
     }
 }

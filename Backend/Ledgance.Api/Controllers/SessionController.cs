@@ -6,8 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace Ledgance.Api.Controllers {
     public record SessionModulePlan(string Module, string Plan, bool RequiresContactSales);
 
-    public record SessionResponse(Guid UserId, string Email, Guid OrganizationId,
-        string Role, IEnumerable<string> Permissions, IEnumerable<SessionModulePlan> Plans);
+    public record SessionResponse(Guid UserId, string Email, Guid? OrganizationId,
+        string Role, IEnumerable<string> Permissions, IEnumerable<SessionModulePlan> Plans,
+        bool NeedsOnboarding);
 
     /// <summary>
     /// Exposes the server-resolved identity, organization and plan context. The client uses this
@@ -27,7 +28,15 @@ namespace Ledgance.Api.Controllers {
 
         [HttpGet]
         public async Task<Result<SessionResponse>> GetSession(CancellationToken ct) {
-            var user = _currentUser.Require();
+            var user = _currentUser.Current;
+
+            if (user is null) {
+                var principal = _currentUser.RequirePrincipal();
+
+                return Result<SessionResponse>.Success(new SessionResponse(
+                    principal.UserId, principal.Email, null, string.Empty,
+                    [], [], NeedsOnboarding: true));
+            }
 
             var plans = new List<SessionModulePlan>();
 
@@ -44,7 +53,8 @@ namespace Ledgance.Api.Controllers {
                 user.OrganizationId,
                 user.Role.ToString(),
                 user.Permissions,
-                plans));
+                plans,
+                NeedsOnboarding: false));
         }
     }
 }

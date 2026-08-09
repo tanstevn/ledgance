@@ -18,11 +18,14 @@ concepts with different lifecycles. Do not "de-duplicate" them into Shared.
 Allowed:
 
 ```
+<Context>.<Feature>.Domain           → Shared.Application (shared kernel: exceptions/primitives only — ADR-014)
 <Context>.<Feature>.Application      → Shared.Application
                                      → <Context>.<Feature>.Domain
 <Context>.<Feature>.Infrastructure   → <Context>.<Feature>.Application
                                      → <Context>.<Feature>.Domain
                                      → Shared.Infrastructure
+                                     → sibling <Feature>.Application in the SAME context,
+                                       to implement a port that sibling publishes
 Ledgance.Api                         → any <Context>.<Feature>.Application
                                      → any <Context>.<Feature>.Infrastructure
                                      → Shared.Infrastructure
@@ -31,11 +34,11 @@ Ledgance.Api                         → any <Context>.<Feature>.Application
 Forbidden:
 
 - `Audit.*` → `Accounting.*` (any direction, any layer)
-- Any `*.Domain` → anything at all
+- Any `*.Domain` → anything beyond the shared kernel
 - `Shared.*` → any module
 - `Ledgance.Api` → any `*.Domain`
 - Cross-**feature** references inside the same context, except through that feature's
-  published Application contract
+  published Application contract (its ports and requests)
 
 ## 3. What belongs in Shared
 
