@@ -28,8 +28,12 @@ export default function LoginPage() {
       await signIn(email, password);
       toast.success("Welcome back!");
       router.push("/dashboard");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }

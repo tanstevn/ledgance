@@ -2,12 +2,16 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import type { Session, User } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase";
 
 interface AuthUser {
   id: string;
@@ -15,95 +19,118 @@ interface AuthUser {
   email: string;
   initials: string;
   role: string;
-  organizationId: string;
-  organizationName: string;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
+  accessToken: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "ledgance-auth";
+function initialsOf(name: string) {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?"
+  );
+}
+
+function toAuthUser(user: User): AuthUser {
+  const name =
+    (user.user_metadata?.full_name as string | undefined) ??
+    user.email?.split("@")[0] ??
+    "";
+
+  return {
+    id: user.id,
+    name,
+    email: user.email ?? "",
+    initials: initialsOf(name),
+    // Organization role is authoritative on the server and is read from /api/session.
+    role: (user.app_metadata?.org_role as string | undefined) ?? "member",
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setUser(JSON.parse(stored));
-      }
-    } catch {
-      // ignore parse errors
-    }
-    setLoading(false);
+    const supabase = getSupabaseClient();
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => setSession(nextSession),
+    );
+
+    return () => subscription.subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, _password: string) => {
-    const name = email
-      .split("@")[0]
-      .split(/[._-]/)
-      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-      .join(" ");
-    const initials = name
-      .split(" ")
-      .map((p) => p[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-    const authUser: AuthUser = {
-      id: "u1",
-      name: name || "Jordan Avery",
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { error } = await getSupabaseClient().auth.signInWithPassword({
       email,
-      initials: initials || "JA",
-      role: "manager",
-      organizationId: "org1",
-      organizationName: "Northgate Advisory",
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
-    setUser(authUser);
-  };
+      password,
+    });
 
-  const signUp = async (name: string, email: string, _password: string) => {
-    const initials = name
-      .split(" ")
-      .map((p) => p[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-    const authUser: AuthUser = {
-      id: "u1",
-      name,
-      email,
-      initials: initials || "JA",
-      role: "manager",
-      organizationId: "org1",
-      organizationName: "Northgate Advisory",
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
-    setUser(authUser);
-  };
+    if (error) throw new Error(error.message);
+  }, []);
 
-  const signOut = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setUser(null);
-    router.push("/");
-  };
+  const signUp = useCallback(
+    async (name: string, email: string, password: string) => {
+      const { error } = await getSupabaseClient().auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } },
+      });
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
-      {children}
-    </AuthContext.Provider>
+      if (error) throw new Error(error.message);
+    },
+    [],
   );
+
+  const signOut = useCallback(async () => {
+    await getSupabaseClient().auth.signOut();
+    router.push("/");
+  }, [router]);
+
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await getSupabaseClient().auth.resetPasswordForEmail(
+      email,
+      { redirectTo: `${window.location.origin}/login` },
+    );
+
+    if (error) throw new Error(error.message);
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user: session?.user ? toAuthUser(session.user) : null,
+      accessToken: session?.access_token ?? null,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword,
+    }),
+    [session, loading, signIn, signUp, signOut, resetPassword],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

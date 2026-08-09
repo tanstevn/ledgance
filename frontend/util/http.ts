@@ -1,4 +1,18 @@
 import { ResultErrors } from "@/types/result";
+import { getSupabaseClient } from "@/lib/supabase";
+
+const authorizationHeader = async (): Promise<Record<string, string>> => {
+  try {
+    const { data } = await getSupabaseClient().auth.getSession();
+
+    return data.session
+      ? { Authorization: `Bearer ${data.session.access_token}` }
+      : {};
+  } catch {
+    // No browser session available (server render, or Supabase not configured).
+    return {};
+  }
+};
 
 const serializeQueryParamsFromObject = function (
   paramsObject: any,
@@ -46,44 +60,46 @@ const common = async (
   body?: any,
   queryParams?: any,
 ) => {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...(await authorizationHeader()),
+  };
+
+  const request: RequestInit = { method, headers };
+
+  if (body) {
+    headers["Content-Type"] = "application/json";
+    request.body = JSON.stringify(body);
+  }
+
+  if (queryParams) {
+    url = `${url}?${(
+      serializeQueryParamsFromObject(queryParams).join("&") ?? ""
+    ).trim()}`;
+  }
+
+  let response: Response;
+
   try {
-    const request = {
-      method,
-      headers: {
-        Accept: "application/json",
-      },
-    } as RequestInit;
+    response = await fetch(url, request);
+  } catch {
+    return Promise.reject(["Unable to reach the server."] as ResultErrors);
+  }
 
-    if (body) {
-      // @ts-ignore
-      request.headers["Content-Type"] = "application/json";
-      request.body = JSON.stringify(body);
-    }
+  const payload = await response.json().catch(() => null);
 
-    if (queryParams) {
-      url = `${url}?${(
-        serializeQueryParamsFromObject(queryParams).join("&") ?? ""
-      ).trim()}`;
-    }
+  if (!response.ok) {
+    // The API returns the same Result envelope for failures, so surface its messages.
+    const errors = payload?.errors;
 
-    const response = await fetch(url, request);
-
-    if (!response.ok) {
-      return Promise.reject([
-        "Something went wrong. Result: " + response.status,
-      ] as ResultErrors);
-    }
-
-    return await response.json();
-  } catch (error: any) {
-    return Promise.resolve(
-      error.response ?? {
-        successful: false,
-        data: null,
-        errors: "Something went wrong.",
-      },
+    return Promise.reject(
+      (Array.isArray(errors) && errors.length > 0
+        ? errors
+        : [`Request failed with status ${response.status}.`]) as ResultErrors,
     );
   }
+
+  return payload;
 };
 
 const get = async <T>(url: string, queryParams?: any): Promise<T> =>

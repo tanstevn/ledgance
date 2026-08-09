@@ -33,8 +33,12 @@ export default function SignUpPage() {
       await signUp(name, email, password);
       toast.success("Account created! Welcome to Ledgance.");
       router.push("/dashboard");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
