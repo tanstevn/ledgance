@@ -11,7 +11,7 @@ namespace Ledgance.Shared.Infrastructure.Mediator {
                 .GetRequiredService<IRequestHandler<TRequest, TResponse>>();
 
             RequestHandlerDelegate<TResponse> finalHandler =
-                () => requestHandler.HandleAsync((TRequest)request);
+                () => requestHandler.HandleAsync((TRequest)request, ct);
 
             var behaviors = provider
                 .GetServices<IPipelineBehavior<TRequest, TResponse>>();

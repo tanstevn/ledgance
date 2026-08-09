@@ -4,13 +4,28 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>4ccfd113-783b-4df9-ba0f-e5498a37ab02</UserSecretsId>
+    <UserSecretsId>0ad7912e-cce5-436e-9c00-c6264073fe4f</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.16.18" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Modules\Accounting\AI\Ledgance.Accounting.AI.Application\Ledgance.Accounting.AI.Application.csproj" />
+    <ProjectReference Include="..\Modules\Accounting\Client\Ledgance.Accounting.Client.Application\Ledgance.Accounting.Client.Application.csproj" />
+    <ProjectReference Include="..\Modules\Accounting\Organization\Ledgance.Accounting.Organization.Application\Ledgance.Accounting.Organization.Application.csproj" />
+    <ProjectReference Include="..\Modules\Accounting\User\Ledgance.Accounting.User.Application\Ledgance.Accounting.User.Application.csproj" />
+    <ProjectReference Include="..\Modules\Audit\AI\Ledgance.Audit.AI.Application\Ledgance.Audit.AI.Application.csproj" />
+    <ProjectReference Include="..\Modules\Audit\Client\Ledgance.Audit.Client.Application\Ledgance.Audit.Client.Application.csproj" />
+    <ProjectReference Include="..\Modules\Audit\Organization\Ledgance.Audit.Organization.Application\Ledgance.Audit.Organization.Application.csproj" />
+    <ProjectReference Include="..\Modules\Audit\User\Ledgance.Audit.User.Application\Ledgance.Audit.User.Application.csproj" />
+    <ProjectReference Include="..\Shared\Ledgance.Shared.Infrastructure\Ledgance.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -41,8 +41,8 @@
     <Project Path="Shared/Ledgance.Shared.Infrastructure/Ledgance.Shared.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/_Tests/">
-    <Project Path="_Tests/Ledgance.Accounting.Tests/Ledgance.Accounting.Tests.csproj" />
-    <Project Path="_Tests/Ledgance.Audit.Tests/Ledgance.Audit.Tests.csproj" />
+    <Project Path="_Tests/Ledgance.Accounting.Unit.Tests/Ledgance.Accounting.Unit.Tests.csproj" />
+    <Project Path="_Tests/Ledgance.Audit.Unit.Tests/Ledgance.Audit.Unit.Tests.csproj" />
   </Folder>
   <Project Path="Ledgance.Api/Ledgance.Api.csproj" Id="0e67ef63-5353-488d-92b6-5e466c1cdf45" />
 </Solution>
