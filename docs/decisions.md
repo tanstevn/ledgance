@@ -4,6 +4,59 @@ Newest first. Each entry: decision, why, consequence.
 
 ---
 
+## ADR-020 — The activity trail scopes by a product-neutral `context_id`
+
+**Decision.** `ActivityEntry`/`RecordedActivity` carry `ContextId` (column `context_id`),
+renamed from `EngagementId`/`engagement_id` in migration 0004. Each product records its own
+unit of work there: Audit the engagement id, Accounting the accounting-entity id. Reader
+queries filter by it.
+
+**Why.** The shared activity trail predates Accounting and had Audit vocabulary baked into a
+Shared contract, which violates the rule that Shared never knows a module's concepts. Phase 4
+needed entity-scoped accounting history; reusing a field named "engagement" for accounting
+entities would have been a standing source of confusion.
+
+**Consequence.** Audit call sites were unaffected (they pass the id positionally); the only
+code changes were in Shared. Any future product module scopes its activity the same way
+without further schema changes.
+
+---
+
+## ADR-019 — One Ledger module; journal→ledger posting; corrections by reversal only
+
+**Decision.** All books-scoped Accounting features — entities, chart of accounts, fiscal
+periods, journal entries, general ledger, trial balance, reports, reconciliation, documents,
+activity — live in a single `Modules/Accounting/Ledger` project trio, per the ADR-016
+rationale. The bookkeeping core works like a real ledger: a journal entry is drafted
+(editable, deletable), must balance (≥2 one-sided lines, debits = credits > 0, memo
+required), must be dated inside an existing **open** fiscal period, and on posting
+materializes **append-only ledger lines** into their own table. Posted entries are
+immutable; the only correction is a reversing entry with swapped lines, linked both ways and
+itself posted through the same period rules. The general ledger, trial balance and financial
+statements are derived queries over ledger lines — no stored report state. Period close is
+blocked while drafts are dated inside the period; parents in the account hierarchy are
+summary accounts and reject postings; an account's type is frozen once it has postings or
+sub-accounts. Authorization is organization-role based (`accounting:ledger:read` Viewer+ /
+`contribute` Member+ / `manage` Manager+ — the last covering entities, chart changes,
+period close/reopen and reversals); there is no per-record team confinement, unlike Audit
+(ADR-017), because bookkeeping access in small organizations attaches to the org role, not
+to an assignment.
+
+**Why.** These capabilities share one aggregate cluster and one guard; separate project
+trios would add ceremony without a boundary that matters. The journal→ledger split gives
+immutability of the posted record (the property auditors and regulators actually care
+about), makes every report a pure function of ledger lines, and lets ledger reads filter
+server-side by account and date. Reversal-only correction keeps the trail honest.
+
+**Consequence.** Posting writes the entry and its lines in two steps (no transaction — a
+known MVP risk); entry numbers are sequential per entity behind a unique index; a
+closing-entry workflow can be added later without changing the model, and until then the
+balance sheet presents life-to-date P&L as a current-earnings line. Phase 5 (Accounting AI)
+reads through the same repositories and guard; Phase 6 exposes read-only projections to
+Audit through Audit's own port, never these repositories.
+
+---
+
 ## ADR-018 — One AI orchestrator; capability catalogs own tier gating; downward-only fallback
 
 **Decision.** All AI traffic flows through `IAiCompletionService` (Shared). The orchestrator

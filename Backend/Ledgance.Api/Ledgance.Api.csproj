@@ -19,6 +19,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Modules\Accounting\AI\Ledgance.Accounting.AI.Application\Ledgance.Accounting.AI.Application.csproj" />
     <ProjectReference Include="..\Modules\Accounting\Client\Ledgance.Accounting.Client.Application\Ledgance.Accounting.Client.Application.csproj" />
+    <ProjectReference Include="..\Modules\Accounting\Ledger\Ledgance.Accounting.Ledger.Application\Ledgance.Accounting.Ledger.Application.csproj" />
+    <ProjectReference Include="..\Modules\Accounting\Ledger\Ledgance.Accounting.Ledger.Infrastructure\Ledgance.Accounting.Ledger.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Accounting\Organization\Ledgance.Accounting.Organization.Application\Ledgance.Accounting.Organization.Application.csproj" />
     <ProjectReference Include="..\Modules\Accounting\User\Ledgance.Accounting.User.Application\Ledgance.Accounting.User.Application.csproj" />
     <ProjectReference Include="..\Modules\Audit\AI\Ledgance.Audit.AI.Application\Ledgance.Audit.AI.Application.csproj" />

@@ -1,4 +1,6 @@
 ﻿using Ledgance.Api.Middlewares;
+using Ledgance.Accounting.Ledger.Application;
+using Ledgance.Accounting.Ledger.Infrastructure;
 using Ledgance.Audit.Client.Application;
 using Ledgance.Audit.Client.Infrastructure;
 using Ledgance.Audit.Engagement.Application;
@@ -13,6 +15,7 @@ using FluentValidation;
 using System.Diagnostics.CodeAnalysis;
 using AccountingAIAnchor = Ledgance.Accounting.AI.Application.MediatorAnchor;
 using AccountingClientAnchor = Ledgance.Accounting.Client.Application.MediatorAnchor;
+using AccountingLedgerAnchor = Ledgance.Accounting.Ledger.Application.MediatorAnchor;
 using AccountingOrgAnchor = Ledgance.Accounting.Organization.Application.MediatorAnchor;
 using AccountingUserAnchor = Ledgance.Accounting.User.Application.MediatorAnchor;
 using AuditAIAnchor = Ledgance.Audit.AI.Application.MediatorAnchor;
@@ -48,6 +51,7 @@ namespace Ledgance.Api {
             var moduleAssemblies = new[] {
                 typeof(AccountingAIAnchor).Assembly,
                 typeof(AccountingClientAnchor).Assembly,
+                typeof(AccountingLedgerAnchor).Assembly,
                 typeof(AccountingOrgAnchor).Assembly,
                 typeof(AccountingUserAnchor).Assembly,
                 typeof(AuditAIAnchor).Assembly,
@@ -71,12 +75,14 @@ namespace Ledgance.Api {
             services.AddLedganceSharedInfrastructure(config, registry => {
                 AuditClientPermissions.RegisterInto(registry);
                 AuditEngagementPermissions.RegisterInto(registry);
+                AccountingLedgerPermissions.RegisterInto(registry);
             });
             services.AddSupabaseAuthentication(config);
             services.AddLedganceAi(config);
 
             services.AddAuditClientInfrastructure();
             services.AddAuditEngagementInfrastructure();
+            services.AddAccountingLedgerInfrastructure();
 
             var allowedOrigins = config
                 .GetSection("Cors:AllowedOrigins")

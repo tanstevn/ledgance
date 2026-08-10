@@ -29,8 +29,8 @@ namespace Ledgance.Shared.Infrastructure.Activity {
         [Column("summary")]
         public string Summary { get; set; } = string.Empty;
 
-        [Column("engagement_id")]
-        public Guid? EngagementId { get; set; }
+        [Column("context_id")]
+        public Guid? ContextId { get; set; }
 
         [Column("actor_user_id")]
         public Guid ActorUserId { get; set; }
@@ -66,20 +66,20 @@ namespace Ledgance.Shared.Infrastructure.Activity {
                 SubjectType = entry.SubjectType,
                 SubjectId = entry.SubjectId,
                 Summary = entry.Summary,
-                EngagementId = entry.EngagementId,
+                ContextId = entry.ContextId,
                 ActorUserId = user.UserId,
                 ActorEmail = user.Email,
                 OccurredAt = DateTime.UtcNow
             }, ct);
         }
 
-        public async Task<IReadOnlyList<RecordedActivity>> ListAsync(Guid? engagementId,
+        public async Task<IReadOnlyList<RecordedActivity>> ListAsync(Guid? contextId,
             int limit, CancellationToken ct) {
             var query = _repository.Query();
 
-            if (engagementId is not null) {
-                query = query.Filter("engagement_id", Constants.Operator.Equals,
-                    engagementId.Value.ToString());
+            if (contextId is not null) {
+                query = query.Filter("context_id", Constants.Operator.Equals,
+                    contextId.Value.ToString());
             }
 
             var rows = await query
@@ -89,7 +89,7 @@ namespace Ledgance.Shared.Infrastructure.Activity {
 
             return rows.Models
                 .Select(row => new RecordedActivity(row.Id, row.Module, row.Action,
-                    row.SubjectType, row.SubjectId, row.Summary, row.EngagementId,
+                    row.SubjectType, row.SubjectId, row.Summary, row.ContextId,
                     row.ActorUserId, row.ActorEmail, row.OccurredAt))
                 .ToList();
         }

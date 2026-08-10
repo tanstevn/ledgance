@@ -10,7 +10,7 @@ intent lives in `project-context.md`.
 | 1 | Foundation Infrastructure | **Completed** — verified by build, tests and an API smoke test |
 | 2 | Audit Core MVP | **Completed (backend)** — API smoke-tested; live-Supabase verification still outstanding |
 | 3 | Audit AI | **Completed (backend)** — 113 tests passing; live-provider verification still outstanding |
-| 4 | Accounting Core MVP | Not Started |
+| 4 | Accounting Core MVP | **Completed (backend)** — 183 tests passing; live-Supabase verification still outstanding |
 | 5 | Accounting AI | Not Started |
 | 6 | Accounting ↔ Audit Integration | Not Started |
 | 7 | OpenClaw / Agentic AI | Not Started |
@@ -95,6 +95,29 @@ tier routes to Anthropic until then), evidence binary content extraction, fronte
 
 Outstanding risk: no AI call has run against a live provider; adapters are verified by
 compilation and unit tests against fakes.
+
+## Phase 4 — Accounting Core MVP (Completed, backend)
+
+Delivered: the `Modules/Accounting/Ledger` module (ADR-019) — accounting entities with
+fixed base currency and archive rules; hierarchical typed chart of accounts with normal
+balances and summary-account posting rules; fiscal periods with draft-blocking close and
+reopen; balanced double-entry journal with Draft → Posted → Reversed lifecycle where
+posting materializes append-only ledger lines and corrections happen only by reversal;
+derived general ledger, trial balance, income statement and balance sheet; account
+reconciliation with cleared lines and explained differences; source documents in the
+`accounting-documents` bucket; entity-scoped activity history over the generalized
+`context_id` activity column (ADR-020); `api/accounting/entities/*` API surface;
+entitlement enforcement (`max_entities`, `max_transactions_per_period`, `storage_bytes`);
+`accounting:ledger:*` permissions; migration `0004_accounting_core.sql`; 70 Accounting
+tests.
+
+Deliberately not included: Accounting AI (Phase 5), the Ledgance Accounting adapter for
+Audit's accounting context (Phase 6), closing entries / year-end close, frontend (Phase 8),
+Stripe (Phase 9).
+
+Outstanding risk: no Supabase call has ever run against a live project; posting writes the
+entry and its ledger lines without a transaction; entry numbering is read-then-write behind
+a unique index.
 
 ## Note on phases 8–13
 
