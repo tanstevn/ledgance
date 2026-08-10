@@ -11,8 +11,8 @@ intent lives in `project-context.md`.
 | 2 | Audit Core MVP | **Completed (backend)** — API smoke-tested; live-Supabase verification still outstanding |
 | 3 | Audit AI | **Completed (backend)** — 113 tests passing; live-provider verification still outstanding |
 | 4 | Accounting Core MVP | **Completed (backend)** — 183 tests passing; live-Supabase verification still outstanding |
-| 5 | Accounting AI | Not Started |
-| 6 | Accounting ↔ Audit Integration | Not Started |
+| 5 | Accounting AI | **Completed (backend)** — 194 tests passing; live-provider verification still outstanding |
+| 6 | Accounting ↔ Audit Integration | **Completed (backend)** — 215 tests passing; live-Supabase verification still outstanding |
 | 7 | OpenClaw / Agentic AI | Not Started |
 | 8 | Frontend & UI/UX | Not Started |
 | 9 | Stripe & Subscriptions | Not Started |
@@ -118,6 +118,49 @@ Stripe (Phase 9).
 Outstanding risk: no Supabase call has ever run against a live project; posting writes the
 entry and its ledger lines without a transaction; entry numbering is read-then-write behind
 a unique index.
+
+## Phase 5 — Accounting AI (Completed, backend)
+
+Delivered: the `AccountingAiCapabilities` catalog (10 capabilities across
+basic/advanced/reasoning tiers) in `Modules/Accounting/AI`; 10 proposal-only slices riding
+the Phase 3 orchestrator unchanged — assistant/entity Q&A, journal-entry explanation,
+period financial summary, journal-entry suggestion from a described transaction,
+reconciliation assistance, statement explanation, two-period variance analysis, anomaly
+detection, complex financial analysis, and a Manage-gated period-close review; context
+assembled by `LedgerAiContext` exclusively from the Ledger module's repositories
+(entity-guarded, activity-logged, metered under `ProductModule.Accounting`);
+`api/accounting/ai/*` endpoints incl. a capability listing with per-plan `included` flags;
+11 new tests (permission and entitlement gating incl. `ai_enabled=false` → 402 before any
+provider call, context assembly, tier tagging, cross-entity protection, catalog per plan).
+
+Deliberately not included: agentic/OpenClaw (Phase 7), AI acceptance-into-the-books flows
+beyond the existing manual commands, frontend AI UX (Phase 8).
+
+Outstanding risk: no AI call has run against a live provider; slices are verified against
+fakes.
+
+## Phase 6 — Accounting ↔ Audit Integration (Completed, backend)
+
+Delivered: the `Ledgance.Integration.AccountingContext` assembly (ADR-021) bridging the two
+contexts without any cross-context reference — Accounting's published
+`IAccountingReadContract` (entity/period/trial-balance snapshots from posted ledger lines
+only), Audit's `ILinkedAccountingSource` port in Audit vocabulary, and the adapter that
+re-verifies the `accounting_context_sharing` entitlement on both products plus the
+Admin-managed per-organization link on every call; link management slices and
+`integration:accounting_link:*` permissions; migration `0005_accounting_link.sql`; Audit
+slices to browse linked context and import a provenance-stamped trial balance
+(`TrialBalanceSource.LedganceAccounting`); `api/integration/accounting-link` and
+`api/audit/accounting-context` / `…/trial-balance/from-accounting` endpoints; the CSV
+external source unchanged as the baseline; 21 new tests across Accounting (read contract),
+Audit (import workflows) and the new `Ledgance.Integration.Unit.Tests` (adapter gating,
+link slices).
+
+Deliberately not included: sharing beyond the trial balance (GL drill-down, statements,
+documents — the contract widens when an Audit workflow needs it), frontend link/import UI
+(Phase 8).
+
+Outstanding risk: no Supabase call has ever run against a live project; the link table and
+adapter are verified by unit tests only.
 
 ## Note on phases 8–13
 

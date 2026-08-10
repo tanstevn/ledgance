@@ -1,9 +1,10 @@
 # AI Architecture
 
 > **Implementation status:** the provider abstraction, routing, entitlement enforcement, usage
-> accounting and the ten **Audit** AI capabilities are **implemented** (Phase 3). Accounting AI
-> (Phase 5) and agentic AI / OpenClaw (Phase 7) remain **planned**. No AI call has yet run
-> against a live provider — everything is verified by unit tests against fakes.
+> accounting, the ten **Audit** AI capabilities (Phase 3) and the ten **Accounting** AI
+> capabilities (Phase 5) are **implemented**. Agentic AI / OpenClaw (Phase 7) remains
+> **planned**. No AI call has yet run against a live provider — everything is verified by unit
+> tests against fakes.
 
 ---
 
@@ -107,10 +108,36 @@ Known limits: evidence summarization works from recorded metadata/description (b
 content extraction is future work); report drafting marks partner judgments with
 `[PARTNER JUDGMENT]` and is gated to `Manage` + team membership.
 
-## 7. Accounting AI **[planned — Phase 5]**
+## 7. Accounting AI capabilities **[implemented — Phase 5]**
 
-Same orchestrator, same entitlements, `ProductModule.Accounting` workloads. Scope per
-`project-context.md` §8. The `Modules/Accounting/AI` projects remain anchors.
+Same orchestrator, same entitlements, `ProductModule.Accounting` workloads (metered
+separately from Audit per organization). Catalog:
+`Ledgance.Accounting.AI.Domain.AccountingAiCapabilities` — the single place
+capability-to-tier gating is declared. `GET /api/accounting/ai/capabilities` reports each
+with an `included` flag for the caller's plan.
+
+| Tier required | Capability | Endpoint (`api/accounting/ai/…`) |
+| --- | --- | --- |
+| basic | Assistant / entity Q&A | `POST assistant` |
+| basic | Journal-entry explanation | `POST entities/{id}/entries/{entryId}/explain` |
+| basic | Period financial summary | `POST entities/{id}/periods/{periodId}/summarize` |
+| advanced | Journal-entry suggestion | `POST entities/{id}/suggest-entry` |
+| advanced | Reconciliation assistance | `POST entities/{id}/reconciliations/{recId}/assist` |
+| advanced | Statement explanation | `POST entities/{id}/periods/{periodId}/explain-statements` |
+| advanced | Variance analysis (two periods) | `POST entities/{id}/analyze-variance` |
+| reasoning | Anomaly detection (ledger/TB) | `POST entities/{id}/periods/{periodId}/detect-anomalies` |
+| reasoning | Complex financial analysis | `POST entities/{id}/periods/{periodId}/analyze-financials` |
+| reasoning | Period-close review | `POST entities/{id}/periods/{periodId}/assist-close` |
+
+Plan mapping (from `SubscriptionPlanCatalog`): Free → basic; Solo/Team → +advanced;
+Accounting Professional → +reasoning; Enterprise → agentic tier reserved for Phase 7.
+
+Context is assembled by `LedgerAiContext` from the Ledger module's own repositories (entity
+overview, chart of accounts, journal entries, computed trial balance and statements,
+reconciliation state) — the caller sees nothing through AI they could not query directly.
+Every capability is entity-guarded, activity-logged (`ai.*` with the entity as context) and
+returns an `AiProposalResult`; the close review additionally requires the
+`accounting:ledger:manage` permission, mirroring who may actually close a period.
 
 ## 8. Agentic AI — OpenClaw **[planned — Phase 7]**
 

@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Ledger\Ledgance.Accounting.Ledger.Application\Ledgance.Accounting.Ledger.Application.csproj" />
     <ProjectReference Include="..\Ledgance.Accounting.AI.Domain\Ledgance.Accounting.AI.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\Shared\Ledgance.Shared.Application\Ledgance.Shared.Application.csproj" />
   </ItemGroup>

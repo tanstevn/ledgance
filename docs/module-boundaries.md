@@ -28,12 +28,21 @@ Allowed:
                                        to implement a port that sibling publishes
 Ledgance.Api                         → any <Context>.<Feature>.Application
                                      → any <Context>.<Feature>.Infrastructure
+                                     → Ledgance.Integration.*
+                                     → Shared.Infrastructure
+Ledgance.Integration.*               → Audit Application layers (to implement Audit-owned ports)
+                                     → Accounting Application layers (to call published read contracts)
                                      → Shared.Infrastructure
 ```
+
+The `backend/Integration` assemblies are the **only** place both contexts may be referenced
+together. They belong to neither context, are referenced only by the host (and their own
+tests), and neither context references them.
 
 Forbidden:
 
 - `Audit.*` → `Accounting.*` (any direction, any layer)
+- Any module → `Ledgance.Integration.*`
 - Any `*.Domain` → anything beyond the shared kernel
 - `Shared.*` → any module
 - `Ledgance.Api` → any `*.Domain`
@@ -64,15 +73,19 @@ one of the two products, it lives in that product.
 
 ## 4. Cross-context integration (Accounting → Audit)
 
-Audit consumes accounting data **only** as a read-only projection behind an explicit contract.
+Audit consumes accounting data **only** as a read-only projection behind explicit,
+Audit-owned contracts (implemented in Phase 6):
 
 ```
-Audit.<Feature>.Application
-   depends on →  IAccountingContextSource        (port, owned by Audit)
-                     ├── ExternalFileContextSource       (CSV / Excel / TB / GL upload)
-                     └── LedganceAccountingContextSource (integration adapter)
-                                 │
-                                 └── calls an Accounting-published read contract
+Audit.Engagement.Application
+   ├── IAccountingContextSource   (file payloads — CsvAccountingContextSource, the baseline)
+   └── ILinkedAccountingSource    (the organization's own Ledgance Accounting books)
+             └── LinkedAccountingSourceAdapter        (backend/Integration/
+                        │                              Ledgance.Integration.AccountingContext)
+                        ├── IAccountingLinkStore       (per-organization opt-in flag)
+                        └── IAccountingReadContract    (published by Accounting.Ledger.Application:
+                                                        entity/period/trial-balance snapshots
+                                                        from posted ledger lines only)
 ```
 
 Rules:
@@ -81,11 +94,13 @@ Rules:
    speak Accounting's language.
 2. Accounting publishes a read-only contract (queries returning DTOs). Audit never obtains
    an Accounting aggregate, never mutates Accounting state.
-3. Sharing is **opt-in per organisation** and enforced server-side on every call:
-   the organisation must be subscribed to both products and must have authorised the link.
+3. Sharing is **opt-in per organisation** and enforced server-side on every call: the
+   `accounting_context_sharing` entitlement must be present on **both** products and an
+   Admin/Owner must have enabled the link (`integration_accounting_links`, migration 0005).
+   The adapter re-verifies all three on every read.
 4. Every consumption is recorded in the Audit trail — auditors must be able to show where a
-   figure came from.
-5. `ExternalFileContextSource` is the baseline. Any Audit feature that works only when
+   figure came from (the import activity names the accounting entity, period and as-of date).
+5. The external-file source is the baseline. Any Audit feature that works only when
    Ledgance Accounting is present is a design error.
 
 ## 5. Tenancy

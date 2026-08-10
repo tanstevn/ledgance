@@ -47,6 +47,9 @@
     <Project Path="Modules/Audit/User/Ledgance.Audit.User.Application/Ledgance.Audit.User.Application.csproj" />
     <Project Path="Modules/Audit/User/Ledgance.Audit.User.Domain/Ledgance.Audit.User.Domain.csproj" />
   </Folder>
+  <Folder Name="/Integration/">
+    <Project Path="Integration/Ledgance.Integration.AccountingContext/Ledgance.Integration.AccountingContext.csproj" />
+  </Folder>
   <Folder Name="/Shared/">
     <Project Path="Shared/Ledgance.Shared.Application/Ledgance.Shared.Application.csproj" />
     <Project Path="Shared/Ledgance.Shared.Infrastructure/Ledgance.Shared.Infrastructure.csproj" />
@@ -54,6 +57,7 @@
   <Folder Name="/_Tests/">
     <Project Path="_Tests/Ledgance.Accounting.Unit.Tests/Ledgance.Accounting.Unit.Tests.csproj" />
     <Project Path="_Tests/Ledgance.Audit.Unit.Tests/Ledgance.Audit.Unit.Tests.csproj" />
+    <Project Path="_Tests/Ledgance.Integration.Unit.Tests/Ledgance.Integration.Unit.Tests.csproj" />
     <Project Path="_Tests/Ledgance.Shared.Unit.Tests/Ledgance.Shared.Unit.Tests.csproj" />
     <Project Path="_Tests/Ledgance.TestInfrastructure/Ledgance.TestInfrastructure.csproj" />
   </Folder>

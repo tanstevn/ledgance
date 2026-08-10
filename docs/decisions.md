@@ -4,6 +4,38 @@ Newest first. Each entry: decision, why, consequence.
 
 ---
 
+## ADR-021 — Cross-context integration lives in a dedicated Integration assembly
+
+**Decision.** Accounting→Audit context sharing is implemented in
+`backend/Integration/Ledgance.Integration.AccountingContext` — the only assembly allowed to
+reference both contexts, referenced only by the host. Audit owns a second port,
+`ILinkedAccountingSource`, expressed entirely in Audit vocabulary alongside the file-based
+`IAccountingContextSource` baseline; Accounting publishes `IAccountingReadContract`
+(entity/period/trial-balance snapshots computed from posted ledger lines — no aggregates,
+no drafts, no writes). The integration assembly's adapter implements Audit's port against
+Accounting's contract and re-verifies, on every call, that (a) the
+`accounting_context_sharing` entitlement is present on **both** products and (b) an
+Admin/Owner has enabled the per-organization link (`integration_accounting_links`,
+migration 0005; managed via `integration:accounting_link:manage`, Admin+). Entitlement
+failures surface as 402, a disabled link as 409; the availability query reports the reason
+without leaking data. Imports stamp `TrialBalanceSource.LedganceAccounting` and record the
+source entity, period and as-of date in the audit trail.
+
+**Why.** The reference rules forbid `Audit.* ↔ Accounting.*` in any layer, yet an in-process
+adapter must see both. A neutral assembly at the composition-root level keeps both contexts
+ignorant of each other, keeps the future split mechanical (module-boundaries §6: only this
+adapter becomes an HTTP client), and gives the link flag and its permissions a home that
+belongs to neither product. Requiring the entitlement on both products enforces "subscribed
+to both" without plan-name checks.
+
+**Consequence.** `Ledgance.Integration.*` is a new reference-rule category (registered in
+`module-boundaries.md` §2); no module may reference it. New shared context (GL drill-down,
+statements, documents) is added by widening the published contract and the Audit port —
+never by a direct cross-context reference. A `Ledgance.Integration.Unit.Tests` project
+covers the adapter and link slices.
+
+---
+
 ## ADR-020 — The activity trail scopes by a product-neutral `context_id`
 
 **Decision.** `ActivityEntry`/`RecordedActivity` carry `ContextId` (column `context_id`),

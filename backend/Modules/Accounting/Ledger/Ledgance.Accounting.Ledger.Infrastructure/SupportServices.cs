@@ -1,5 +1,6 @@
 using Ledgance.Accounting.Ledger.Application;
 using Ledgance.Accounting.Ledger.Application.Ports;
+using Ledgance.Accounting.Ledger.Application.Published;
 using Microsoft.Extensions.DependencyInjection;
 using SupabaseClient = Supabase.Client;
 
@@ -48,6 +49,7 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
             services.AddScoped<IDocumentRepository, DocumentRepository>();
             services.AddScoped<IDocumentFileStore, SupabaseDocumentFileStore>();
             services.AddScoped<IEntityGuard, EntityGuard>();
+            services.AddScoped<IAccountingReadContract, AccountingReadContract>();
 
             return services;
         }

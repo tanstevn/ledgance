@@ -2,6 +2,7 @@
 using Ledgance.Accounting.Ledger.Application;
 using Ledgance.Accounting.Ledger.Infrastructure;
 using Ledgance.Audit.Client.Application;
+using Ledgance.Integration.AccountingContext;
 using Ledgance.Audit.Client.Infrastructure;
 using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Infrastructure;
@@ -23,6 +24,7 @@ using AuditClientAnchor = Ledgance.Audit.Client.Application.MediatorAnchor;
 using AuditEngagementAnchor = Ledgance.Audit.Engagement.Application.MediatorAnchor;
 using AuditOrgAnchor = Ledgance.Audit.Organization.Application.MediatorAnchor;
 using AuditUserAnchor = Ledgance.Audit.User.Application.MediatorAnchor;
+using IntegrationAnchor = Ledgance.Integration.AccountingContext.MediatorAnchor;
 
 namespace Ledgance.Api {
     public static class DependencyInjection {
@@ -58,7 +60,8 @@ namespace Ledgance.Api {
                 typeof(AuditClientAnchor).Assembly,
                 typeof(AuditEngagementAnchor).Assembly,
                 typeof(AuditOrgAnchor).Assembly,
-                typeof(AuditUserAnchor).Assembly
+                typeof(AuditUserAnchor).Assembly,
+                typeof(IntegrationAnchor).Assembly
             };
 
             // The shared assemblies carry the cross-cutting pipeline behaviors and the
@@ -76,6 +79,7 @@ namespace Ledgance.Api {
                 AuditClientPermissions.RegisterInto(registry);
                 AuditEngagementPermissions.RegisterInto(registry);
                 AccountingLedgerPermissions.RegisterInto(registry);
+                AccountingLinkPermissions.RegisterInto(registry);
             });
             services.AddSupabaseAuthentication(config);
             services.AddLedganceAi(config);
@@ -83,6 +87,7 @@ namespace Ledgance.Api {
             services.AddAuditClientInfrastructure();
             services.AddAuditEngagementInfrastructure();
             services.AddAccountingLedgerInfrastructure();
+            services.AddAccountingContextIntegration();
 
             var allowedOrigins = config
                 .GetSection("Cors:AllowedOrigins")
