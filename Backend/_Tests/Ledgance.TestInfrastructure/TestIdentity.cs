@@ -1,0 +1,53 @@
+using Ledgance.Shared.Application.Identity;
+
+namespace Ledgance.TestInfrastructure {
+    public static class TestIdentity {
+        public static readonly Guid DefaultOrganizationId =
+            Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        public static readonly Guid OtherOrganizationId =
+            Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+        public static CurrentUser User(OrganizationRole role = OrganizationRole.Manager,
+            Guid? organizationId = null, params string[] permissions) =>
+            new(Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                "member@ledgance.test",
+                organizationId ?? DefaultOrganizationId,
+                role,
+                new HashSet<string>(permissions));
+
+        public static CurrentUser UserWithRegisteredPermissions(
+            OrganizationRole role = OrganizationRole.Manager,
+            Guid? organizationId = null) {
+            var registry = SharedPermissions.RegisterInto(new PermissionRegistry());
+
+            return new CurrentUser(Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                "member@ledgance.test",
+                organizationId ?? DefaultOrganizationId,
+                role,
+                registry.For(role));
+        }
+    }
+
+    public sealed class FakeCurrentUserAccessor : ICurrentUserAccessor, ICurrentUserInitializer {
+        public FakeCurrentUserAccessor(CurrentUser? current = null,
+            AuthenticatedPrincipal? principal = null) {
+            Current = current;
+            Principal = principal
+                ?? (current is null ? null : new AuthenticatedPrincipal(current.UserId, current.Email));
+        }
+
+        public CurrentUser? Current { get; private set; }
+
+        public AuthenticatedPrincipal? Principal { get; private set; }
+
+        public void SetPrincipal(AuthenticatedPrincipal principal) {
+            Principal = principal;
+        }
+
+        public void Set(CurrentUser user) {
+            Current = user;
+            Principal ??= new AuthenticatedPrincipal(user.UserId, user.Email);
+        }
+    }
+}
