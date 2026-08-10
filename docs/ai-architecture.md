@@ -1,10 +1,10 @@
 # AI Architecture
 
 > **Implementation status:** the provider abstraction, routing, entitlement enforcement, usage
-> accounting, the ten **Audit** AI capabilities (Phase 3) and the ten **Accounting** AI
-> capabilities (Phase 5) are **implemented**. Agentic AI / OpenClaw (Phase 7) remains
-> **planned**. No AI call has yet run against a live provider — everything is verified by unit
-> tests against fakes.
+> accounting, the Audit AI capabilities (Phase 3), the Accounting AI capabilities (Phase 5)
+> and the **agentic layer with OpenClaw** (Phase 7) are **implemented** — eleven capabilities
+> per product including one agent each. No AI call has yet run against a live provider —
+> everything is verified by unit tests against fakes.
 
 ---
 
@@ -31,7 +31,7 @@ context documents. The orchestrator is the only path to a provider.
 | **Ollama** | Cost-effective baseline (`basic` tier) | Raw HTTP `api/chat` |
 | **OpenAI** | Advanced general workloads (`advanced` tier) | Raw HTTP `v1/chat/completions` |
 | **Anthropic** | Complex reasoning, large context (`reasoning` tier) | Official `Anthropic` C# SDK |
-| **OpenClaw** | Agentic execution (`agentic` tier) | **planned — Phase 7** |
+| **OpenClaw** | Agentic execution (`agentic` tier) | Raw HTTP `v1/agent/turns` (agent-turn protocol) |
 
 Routing is tier → provider/model, declared in `ConfiguredAiModelRouter` defaults and
 overridable per tier via `Ai:Routing:{tier}` configuration:
@@ -41,7 +41,7 @@ overridable per tier via `Ai:Routing:{tier}` configuration:
 | `basic` | Ollama · `llama3.1:8b` |
 | `advanced` | OpenAI · `gpt-4o` |
 | `reasoning` | Anthropic · `claude-opus-5` |
-| `agentic` | Anthropic · `claude-opus-5` (until OpenClaw lands in Phase 7) |
+| `agentic` | OpenClaw · `openclaw-agent-1` (falls back down the chain to Anthropic etc.) |
 
 Selection order: **authorization → entitlement (`ai_max_tier`, remaining `ai_monthly_units`,
 `ai_max_context_tokens`) → capability's required tier → cost**. A workload above the plan's
@@ -139,12 +139,42 @@ Every capability is entity-guarded, activity-logged (`ai.*` with the entity as c
 returns an `AiProposalResult`; the close review additionally requires the
 `accounting:ledger:manage` permission, mirroring who may actually close a period.
 
-## 8. Agentic AI — OpenClaw **[planned — Phase 7]**
+## 8. Agentic AI — OpenClaw **[implemented — Phase 7]**
 
-The `agentic` tier is defined and routable but no agentic capability exists. When built: the
-agent's tool set is a whitelist of Mediator requests executed through the normal pipeline;
-every step bounded and logged; material changes still require human acceptance. Agents never
-touch the database directly.
+```
+User → agent command (module Application)
+   → IAgentRunner.RunAsync(AgentWorkload)                  Shared.Application/Ai
+   → AgentRunnerService                                    Shared.Infrastructure/Ai
+        agentic tier gate → per-turn unit metering → route → loop:
+           provider chooses a tool → tool = whitelisted mediator request
+           → full pipeline (authorization, entitlements, validation) as the calling user
+   → IAgentToolClient:  OpenClaw (native) · chat providers via ChatAgentAdapter (fallback)
+```
+
+The promise made in Phase 3 is now the mechanism: **an agent's tool set is a whitelist of
+mediator requests executed through the normal pipeline.** Each tool call re-enters the
+pipeline with the caller's identity, so a denial (permission, entitlement, team confinement,
+domain rule) is contained as a tool result the agent must work around — never bypassed.
+Tools are read-only queries; the run's answer is a proposal (`AgentRunReport` with the full
+step transcript and a disclaimer). Agents never see a repository or the database, and the
+engagement/entity id is fixed server-side — the agent cannot choose another scope.
+
+Bounds: every provider turn consumes one usage unit and re-checks `ai_monthly_units`; tool
+steps are capped (default 8) with a forced no-tools final turn; tool results are truncated.
+OpenClaw only *chooses* tools over its `v1/agent/turns` protocol — execution never leaves
+the application. If OpenClaw is unavailable, the run falls back down the provider chain,
+driving the same loop over plain chat models through a strict-JSON protocol
+(`ChatAgentAdapter`); an unparsable reply degrades to a final answer, and a provider that
+dies mid-conversation aborts the run (503).
+
+Endpoints: `POST api/audit/ai/engagements/{id}/agent` (capability `audit.agent`:
+engagement overview, risks, procedures, working papers + detail, findings, evidence,
+imported trial balance, and the linked accounting context — availability enforced
+server-side) and `POST api/accounting/ai/entities/{id}/agent` (capability
+`accounting.agent`: entity overview, chart of accounts, periods, journal entries + detail,
+general ledger, trial balance, statements, reconciliations + detail). Both are
+activity-logged (`ai.agent`) and appear in the capability catalogs, included only for
+plans whose `ai_max_tier` is `agentic` (Audit Firm/Enterprise, Accounting Enterprise).
 
 ## 9. Configuration **[implemented]**
 
@@ -155,7 +185,7 @@ touch the database directly.
 Ai:Ollama:BaseUrl                     http://localhost:11434
 Ai:OpenAI:BaseUrl|ApiKey
 Ai:Anthropic:ApiKey
-Ai:OpenClaw:BaseUrl|ApiKey            (unread until Phase 7)
+Ai:OpenClaw:BaseUrl|ApiKey
 Ai:Routing:{basic|advanced|reasoning|agentic}:{Provider|Model|MaxOutputTokens}
 ```
 

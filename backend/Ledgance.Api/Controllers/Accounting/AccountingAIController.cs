@@ -1,4 +1,5 @@
 using Ledgance.Accounting.AI.Application;
+using Ledgance.Accounting.AI.Application.Agent;
 using Ledgance.Accounting.AI.Application.Analysis;
 using Ledgance.Accounting.AI.Application.Assistant;
 using Ledgance.Accounting.AI.Application.Suggestions;
@@ -95,5 +96,12 @@ namespace Ledgance.Api.Controllers.Accounting {
                 EntityId = entityId,
                 PeriodId = periodId
             }, ct);
+
+        [HttpPost("entities/{entityId:guid}/agent")]
+        public async Task<Result<AgentRunReport>> RunAgent(Guid entityId,
+            [FromBody] RunAccountingAgentCommand command, CancellationToken ct) {
+            command.EntityId = entityId;
+            return await _mediator.SendAsync(command, ct);
+        }
     }
 }

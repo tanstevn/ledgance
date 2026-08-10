@@ -51,10 +51,14 @@ namespace Ledgance.Accounting.AI.Domain {
             "accounting.close_assistance", AiTiers.Reasoning,
             "Period-close review: what must be resolved before the period can be closed");
 
+        public static readonly AccountingAiCapability Agent = new(
+            "accounting.agent", AiTiers.Agentic,
+            "Multi-step agentic investigation across the entity's books");
+
         public static readonly IReadOnlyList<AccountingAiCapability> All = [
             Assistant, EntryExplanation, FinancialSummary, EntrySuggestion,
             ReconciliationAssistance, StatementExplanation, VarianceAnalysis,
-            AnomalyDetection, FinancialAnalysis, CloseAssistance
+            AnomalyDetection, FinancialAnalysis, CloseAssistance, Agent
         ];
     }
 }

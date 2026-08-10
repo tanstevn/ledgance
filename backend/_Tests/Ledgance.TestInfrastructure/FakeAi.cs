@@ -49,6 +49,35 @@ namespace Ledgance.TestInfrastructure {
         }
     }
 
+    public sealed class FakeAgentToolClient : IAgentToolClient {
+        public FakeAgentToolClient(string provider = "OpenClaw") {
+            Provider = provider;
+        }
+
+        public string Provider { get; }
+
+        public Exception? Throws { get; set; }
+
+        public Queue<AgentTurn> Turns { get; } = new();
+
+        public List<(string Model, string Goal, IReadOnlyList<AgentTool> Tools,
+            IReadOnlyList<AgentExchange> Exchanges)> Calls { get; } = [];
+
+        public Task<AgentTurn> NextTurnAsync(string model, string systemPrompt, string goal,
+            IReadOnlyList<AgentTool> tools, IReadOnlyList<AgentExchange> exchanges,
+            int maxOutputTokens, CancellationToken ct) {
+            if (Throws is not null) {
+                throw Throws;
+            }
+
+            Calls.Add((model, goal, tools, exchanges));
+
+            return Task.FromResult(Turns.Count > 0
+                ? Turns.Dequeue()
+                : new AgentTurn($"{Provider} final answer", null));
+        }
+    }
+
     public sealed class InMemoryAiUsageMeter : IAiUsageMeter {
         private readonly Dictionary<(Guid, ProductModule, string), long> _usage = [];
 

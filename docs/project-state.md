@@ -3,7 +3,7 @@
 **Where the implementation currently is.** For what the product should be, read
 `project-context.md`. This document is updated at the end of every phase.
 
-**Last verified:** 2026-08-10, end of Phase 6, against the repository.
+**Last verified:** 2026-08-10, end of Phase 7, against the repository.
 
 ---
 
@@ -11,9 +11,9 @@
 
 | | |
 | --- | --- |
-| Last completed phase | **Phase 6 — Accounting ↔ Audit Integration (backend)** |
+| Last completed phase | **Phase 7 — OpenClaw / Agentic AI (backend)** |
 | Current phase | none in progress |
-| Next phase | **Phase 7 — OpenClaw / Agentic AI** (not started) |
+| Next phase | **Phase 8 — Frontend & UI/UX** (not started) |
 
 ---
 
@@ -24,7 +24,7 @@ Verified by running the commands, not assumed.
 | Check | Result |
 | --- | --- |
 | `dotnet build backend/Ledgance.slnx` | succeeded — 0 errors, 0 C# warnings |
-| `dotnet test backend/Ledgance.slnx` | **215 passed, 0 failed** (51 shared, 68 audit, 84 accounting, 12 integration) |
+| `dotnet test backend/Ledgance.slnx` | **233 passed, 0 failed** (59 shared, 73 audit, 89 accounting, 12 integration) |
 | API smoke test | boots clean; every `api/accounting/*`, `api/audit/*` and `api/integration/*` route → 401 unauthenticated; OpenAPI 200; unknown routes 404 |
 | Frontend | untouched in Phases 2–4 (Phase 8); `npx tsc --noEmit` clean as of Phase 1 |
 
@@ -110,6 +110,22 @@ balance/statements, reconciliation state); every capability is entity-guarded vi
 `ai-architecture.md` §7 for the capability/endpoint table. `Accounting.AI.Infrastructure`
 remains empty (context assembly needed no infrastructure).
 
+### Agentic AI — OpenClaw (Phase 7)
+
+`IAgentRunner`/`AgentTool` contracts (Shared.Application/Ai) + `AgentRunnerService`
+(Shared.Infrastructure/Ai): agentic-tier gate, one usage unit per provider turn re-checked
+against the monthly limit, capped tool steps with a forced no-tools final turn, and
+containment of tool denials as transcript results (ADR-022). `OpenClawAgentClient` drives
+the loop natively over `v1/agent/turns` (OpenClaw chooses tools; execution never leaves the
+app); `ChatAgentAdapter` drives the same loop over the chat providers via strict JSON as
+the downward fallback. `audit.agent` (engagement records + linked accounting context) and
+`accounting.agent` (the entity's books) expose read-only tool whitelists of mediator
+requests re-entering the full pipeline as the calling user, with the scope id fixed
+server-side. Endpoints: `POST api/audit/ai/engagements/{id}/agent`,
+`POST api/accounting/ai/entities/{id}/agent` — proposal-only `AgentRunReport` with the step
+transcript; included only for agentic plans (Audit Firm/Enterprise, Accounting Enterprise).
+See `ai-architecture.md` §8.
+
 ### Accounting ↔ Audit integration (`backend/Integration`) — new in Phase 6
 
 `Ledgance.Integration.AccountingContext` (ADR-021) is the only assembly referencing both
@@ -175,14 +191,14 @@ checks on ledger lines and unique `(entity_id, code)` / `(entity_id, entry_numbe
 
 ## What remains
 
-1. **Phase 7 — OpenClaw / Agentic AI** (next) — the `agentic` tier still routes to
-   Anthropic; `Ai:OpenClaw` config keys remain unread.
-2. **Frontend (Phase 8)** — all product pages still mock-driven; no Accounting UI, no AI
-   UX, no link-management UI.
-3. Stripe (Phase 9), security review, quality, polish (Phases 10–13).
-4. Shared accounting context beyond the trial balance (GL drill-down, statements,
+1. **Frontend (Phase 8, next)** — all product pages still mock-driven; no Accounting UI,
+   no AI/agent UX, no link-management UI.
+2. Stripe (Phase 9), security review, quality, polish (Phases 10–13).
+3. Shared accounting context beyond the trial balance (GL drill-down, statements,
    documents) — widen `IAccountingReadContract` + `ILinkedAccountingSource` when an Audit
    workflow needs it.
+4. Write-capable agent tools with explicit human acceptance, if the product ever wants
+   them — the pipeline-as-tool-boundary design (ADR-022) already supports it safely.
 
 ---
 
@@ -195,7 +211,9 @@ checks on ledger lines and unique `(entity_id, code)` / `(entity_id, entry_numbe
 1a. **No AI call has run against a live provider** (unchanged from Phase 3); the Accounting
    AI slices are verified against `FakeAiCompletionService`. Accounting AI context builders
    fetch all ledger lines up to the period end per request — same in-memory aggregation
-   posture as the reports (limitation 3).
+   posture as the reports (limitation 3). The OpenClaw `v1/agent/turns` protocol is an
+   assumed contract verified against fakes only — expect adapter adjustments when a real
+   endpoint exists.
 2. **Journal entry numbering is read-then-write** (`max(entry_number)+1`) without a
    concurrency guard — two simultaneous drafts could collide on the unique index; the insert
    fails rather than corrupts. Same MVP posture as AI usage metering.

@@ -14,6 +14,8 @@ namespace Ledgance.Shared.Infrastructure.Ai {
                 client.Timeout = TimeSpan.FromMinutes(3));
             services.AddHttpClient<OpenAiChatClient>(client =>
                 client.Timeout = TimeSpan.FromMinutes(3));
+            services.AddHttpClient<OpenClawAgentClient>(client =>
+                client.Timeout = TimeSpan.FromMinutes(5));
 
             services.AddScoped<IAiChatClient>(provider =>
                 provider.GetRequiredService<OllamaChatClient>());
@@ -21,8 +23,12 @@ namespace Ledgance.Shared.Infrastructure.Ai {
                 provider.GetRequiredService<OpenAiChatClient>());
             services.AddScoped<IAiChatClient, AnthropicChatClient>();
 
+            services.AddScoped<IAgentToolClient>(provider =>
+                provider.GetRequiredService<OpenClawAgentClient>());
+
             services.AddScoped<IAiUsageMeter, SupabaseAiUsageMeter>();
             services.AddScoped<IAiCompletionService, AiCompletionService>();
+            services.AddScoped<IAgentRunner, AgentRunnerService>();
 
             return services;
         }

@@ -1,4 +1,5 @@
 using Ledgance.Audit.AI.Application;
+using Ledgance.Audit.AI.Application.Agent;
 using Ledgance.Audit.AI.Application.Analysis;
 using Ledgance.Audit.AI.Application.Assistant;
 using Ledgance.Audit.AI.Application.Drafting;
@@ -83,5 +84,12 @@ namespace Ledgance.Api.Controllers.Audit {
             CancellationToken ct)
             => await _mediator.SendAsync(
                 new DraftAuditReportCommand { EngagementId = engagementId }, ct);
+
+        [HttpPost("engagements/{engagementId:guid}/agent")]
+        public async Task<Result<AgentRunReport>> RunAgent(Guid engagementId,
+            [FromBody] RunAuditAgentCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
     }
 }

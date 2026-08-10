@@ -49,10 +49,14 @@ namespace Ledgance.Audit.AI.Domain {
             "audit.report_draft", AiTiers.Reasoning,
             "Audit report drafting from findings and engagement results");
 
+        public static readonly AuditAiCapability Agent = new(
+            "audit.agent", AiTiers.Agentic,
+            "Multi-step agentic investigation across the engagement's records");
+
         public static readonly IReadOnlyList<AuditAiCapability> All = [
             Assistant, DocumentSummary, RiskSuggestions, ProcedureSuggestions,
             WorkingPaperDraft, FindingDraft, RiskAnalysis, AnomalyDetection,
-            ReviewAssistance, ReportDraft
+            ReviewAssistance, ReportDraft, Agent
         ];
     }
 }

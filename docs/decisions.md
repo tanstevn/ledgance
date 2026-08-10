@@ -4,6 +4,42 @@ Newest first. Each entry: decision, why, consequence.
 
 ---
 
+## ADR-022 — Agent tools are whitelisted mediator requests run as the calling user
+
+**Decision.** The agentic layer (Phase 7) gives an AI agent exactly one way to touch the
+application: a per-capability whitelist of `AgentTool`s, each of which dispatches a
+read-only mediator request through the full pipeline — authorization, entitlements,
+validation, team/entity guards — with the calling user's identity. The engagement or entity
+scope is fixed server-side when the tool set is built; the model chooses *which* whitelisted
+tool to call and with what arguments, never what the tool is allowed to do. A denial inside
+a tool (403/402/409) is serialized into the transcript as that tool's result, so the agent
+must work around it — there is no privileged path and no retry-as-someone-else.
+`AgentRunnerService` (Shared.Infrastructure) owns the loop: the `agentic` entitlement tier
+is required, every provider turn costs one usage unit re-checked against `ai_monthly_units`
+before it is taken, tool steps are capped with a forced no-tools final turn, and tool
+results are truncated. OpenClaw is the native driver over a `v1/agent/turns` protocol that
+only ever returns "call this tool" or "final answer" — tool execution never leaves the
+application; when OpenClaw is unavailable the same loop runs over the ordinary chat
+providers through `ChatAgentAdapter`'s strict-JSON protocol, falling down the tier chain,
+never up. Tools are read-only and the run's answer is a proposal with a full step
+transcript; material changes still require a human to use the normal commands.
+
+**Why.** The product context is categorical: agents must never manipulate the database or
+bypass application authorization. Reusing the mediator pipeline as the tool boundary means
+the agent's authority is *identical* to its caller's, enforced by the same three layers as
+every other request — nothing new to audit, and the existing behaviors keep working as the
+agent surface grows. Per-turn metering makes a runaway loop an entitlement stop rather than
+a bill. Keeping tool execution in-process keeps organization data out of the agentic
+provider except for what the workload deliberately shows it.
+
+**Consequence.** New agent capabilities are added by widening a tool whitelist, not by
+granting access. Write-capable tools, if ever added, get the same treatment (the pipeline
+enforces the command's own permission and domain rules) plus explicit human acceptance.
+The transcript (`AgentRunReport.Steps`) is the Phase 8 UI's raw material and the auditor's
+evidence of what the agent read.
+
+---
+
 ## ADR-021 — Cross-context integration lives in a dedicated Integration assembly
 
 **Decision.** Accounting→Audit context sharing is implemented in

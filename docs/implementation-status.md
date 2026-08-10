@@ -13,7 +13,7 @@ intent lives in `project-context.md`.
 | 4 | Accounting Core MVP | **Completed (backend)** — 183 tests passing; live-Supabase verification still outstanding |
 | 5 | Accounting AI | **Completed (backend)** — 194 tests passing; live-provider verification still outstanding |
 | 6 | Accounting ↔ Audit Integration | **Completed (backend)** — 215 tests passing; live-Supabase verification still outstanding |
-| 7 | OpenClaw / Agentic AI | Not Started |
+| 7 | OpenClaw / Agentic AI | **Completed (backend)** — 233 tests passing; live-provider verification still outstanding |
 | 8 | Frontend & UI/UX | Not Started |
 | 9 | Stripe & Subscriptions | Not Started |
 | 10 | Security & Authorization Review | Not Started |
@@ -161,6 +161,30 @@ documents — the contract widens when an Audit workflow needs it), frontend lin
 
 Outstanding risk: no Supabase call has ever run against a live project; the link table and
 adapter are verified by unit tests only.
+
+## Phase 7 — OpenClaw / Agentic AI (Completed, backend)
+
+Delivered: the agentic layer (ADR-022) — `IAgentRunner`/`AgentWorkload`/`AgentTool`
+contracts in Shared.Application and `AgentRunnerService` in Shared.Infrastructure enforcing
+the `agentic` tier gate, one usage unit per provider turn with per-turn re-checks, a
+tool-step cap with a forced no-tools final turn, and containment of tool failures
+(authorization, entitlement and domain-rule denials become tool results, never bypasses);
+the `OpenClawAgentClient` (native `v1/agent/turns` adapter — OpenClaw chooses tools,
+execution never leaves the application) with downward fallback driving the same loop over
+chat providers via `ChatAgentAdapter`'s strict-JSON protocol; `audit.agent` and
+`accounting.agent` capabilities whose tools are whitelists of read-only mediator requests
+re-entering the full pipeline with the caller's identity and a server-fixed
+engagement/entity scope; `POST api/audit/ai/engagements/{id}/agent` and
+`POST api/accounting/ai/entities/{id}/agent` returning proposal-only `AgentRunReport`s with
+full step transcripts; activity logging (`ai.agent`); 18 new tests (tier gating, per-turn
+metering, unknown/forbidden tool containment, step limit, OpenClaw fallback, JSON-protocol
+tool driving, team/entity/permission boundaries, catalog inclusion per plan).
+
+Deliberately not included: write-capable agent tools (material changes still go through the
+normal human commands), multi-agent orchestration, frontend agent UX (Phase 8).
+
+Outstanding risk: no AI call has run against a live provider; the OpenClaw protocol is
+verified against fakes only.
 
 ## Note on phases 8–13
 
