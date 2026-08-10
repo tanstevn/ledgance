@@ -8,6 +8,12 @@ namespace Ledgance.Shared.Application.Onboarding {
     public class ProvisionOrganizationCommand : ICommand<Result<ProvisionOrganizationCommandResult>> {
         public string OrganizationName { get; set; } = string.Empty;
         public string? DisplayName { get; set; }
+
+        /// <summary>
+        /// The platform chosen at signup ("Audit" or "Accounting"). The dashboard shows only
+        /// the organization's activated products; null activates both.
+        /// </summary>
+        public string? Product { get; set; }
     }
 
     public class ProvisionOrganizationCommandResult {
@@ -18,6 +24,9 @@ namespace Ledgance.Shared.Application.Onboarding {
         public ProvisionOrganizationCommandValidator() {
             RuleFor(x => x.OrganizationName).NotEmpty().MaximumLength(100);
             RuleFor(x => x.DisplayName).MaximumLength(100);
+            RuleFor(x => x.Product)
+                .Must(product => product is null or "Audit" or "Accounting")
+                .WithMessage("Product must be 'Audit' or 'Accounting'.");
         }
     }
 }

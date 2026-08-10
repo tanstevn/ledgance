@@ -14,7 +14,7 @@ intent lives in `project-context.md`.
 | 5 | Accounting AI | **Completed (backend)** — 194 tests passing; live-provider verification still outstanding |
 | 6 | Accounting ↔ Audit Integration | **Completed (backend)** — 215 tests passing; live-Supabase verification still outstanding |
 | 7 | OpenClaw / Agentic AI | **Completed (backend)** — 233 tests passing; live-provider verification still outstanding |
-| 8 | Frontend & UI/UX | Not Started |
+| 8 | Frontend & UI/UX | **Completed (discovery/subscription scope)** — landing, product pages, pricing, onboarding, subscription flow and API-driven dashboard; deep product workspaces remain future work |
 | 9 | Stripe & Subscriptions | Not Started |
 | 10 | Security & Authorization Review | Not Started |
 | 11 | Testing & Quality | Not Started |
@@ -186,8 +186,35 @@ normal human commands), multi-agent orchestration, frontend agent UX (Phase 8).
 Outstanding risk: no AI call has run against a live provider; the OpenClaw protocol is
 verified against fakes only.
 
-## Note on phases 8–13
+## Phase 8 — Frontend (Completed for the discovery/subscription scope)
 
-Some frontend surface — the marketing site, `/login`, `/signup` and the `/dashboard` shell —
-pre-existed Phase 1 and remains mock-driven. That does not make Phase 8 started; the product UI,
-its data wiring and its missing routes are all still to do.
+Delivered: a two-platform marketing site grounded in the implemented capabilities — landing
+page with platform chooser (Accounting vs Audit, independent by design), `/accounting` and
+`/audit` product pages, `/pricing` with per-platform tabs driven by the new anonymous
+`GET /api/subscriptions/plans` endpoint (plan features derive from the same
+`SubscriptionPlanCatalog` the backend enforces; Solo remains the only priced plan per the
+product docs, Enterprise is Contact Sales); fabricated landing content (invented stats,
+testimonials, SOC 2 claims, made-up prices) removed. Flows: platform/plan-aware signup →
+real onboarding (`POST /api/onboarding/organization`) → subscribe page (the Stripe seam:
+plan summary, checkout call that fails gracefully until Phase 9) → `subscribe/success`
+which trusts only the server-confirmed session. Cross-platform recommendation
+(`CrossSellCard`): appears only after a backend-confirmed qualifying paid plan
+(Solo→Professional range; never Free, never Enterprise, never during initial discovery),
+always optional with explore / maybe later / dismiss. Dashboard reworked onto real APIs:
+session-driven layout with onboarding gate, plan badges and org name (SessionResponse now
+carries `organizationName`), overview with live entity/client counts, Accounting entities
+page and Audit clients page (list + create with loading/empty/error/populated states),
+plans & billing page; `lib/mock-data.ts` deleted. Env files (`.env`, `.env.development`,
+`.env.local`) carry sample values only. Validation: `next build` (16 routes) and
+`tsc --noEmit` clean; backend 235 tests passing (+2 for the plans query).
+
+Deliberately not included: Stripe checkout itself (Phase 9 — the frontend flow is built up
+to the checkout boundary), deep product workspaces (journal entry editor, working-paper
+screens, AI/agent UX — future frontend work), payment management UI.
+
+## Note on remaining frontend work
+
+The deep product workspaces (accounting journal/ledger screens, audit engagement file, AI
+and agent experiences) are not part of the Phase 8 discovery/subscription scope and remain
+to be built; the dashboard currently offers the entity/client entry points backed by real
+APIs.

@@ -120,6 +120,15 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
             return rows.Models.Select(ToDomain).ToList();
         }
 
+        public async Task<IReadOnlyList<Guid>> ListEngagementIdsForUserAsync(Guid userId,
+            CancellationToken ct) {
+            var rows = await _repository.Query()
+                .Filter("user_id", Constants.Operator.Equals, userId.ToString())
+                .Get(ct);
+
+            return rows.Models.Select(row => row.EngagementId).Distinct().ToList();
+        }
+
         public async Task<EngagementTeamMember?> FindForUserAsync(Guid engagementId,
             Guid userId, CancellationToken ct) {
             var rows = await _repository.Query()

@@ -7,7 +7,8 @@ namespace Ledgance.Api.Controllers {
     public record SessionModulePlan(string Module, string Plan, bool RequiresContactSales);
 
     public record SessionResponse(Guid UserId, string Email, Guid? OrganizationId,
-        string Role, IEnumerable<string> Permissions, IEnumerable<SessionModulePlan> Plans,
+        string? OrganizationName, string Role, IEnumerable<string> Permissions,
+        IEnumerable<SessionModulePlan> Plans, IEnumerable<string> Products,
         bool NeedsOnboarding);
 
     /// <summary>
@@ -19,11 +20,13 @@ namespace Ledgance.Api.Controllers {
     public class SessionController : ControllerBase {
         private readonly ICurrentUserAccessor _currentUser;
         private readonly IEntitlementService _entitlements;
+        private readonly IOrganizationDirectory _organizations;
 
         public SessionController(ICurrentUserAccessor currentUser,
-            IEntitlementService entitlements) {
+            IEntitlementService entitlements, IOrganizationDirectory organizations) {
             _currentUser = currentUser;
             _entitlements = entitlements;
+            _organizations = organizations;
         }
 
         [HttpGet]
@@ -34,8 +37,8 @@ namespace Ledgance.Api.Controllers {
                 var principal = _currentUser.RequirePrincipal();
 
                 return Result<SessionResponse>.Success(new SessionResponse(
-                    principal.UserId, principal.Email, null, string.Empty,
-                    [], [], NeedsOnboarding: true));
+                    principal.UserId, principal.Email, null, null, string.Empty,
+                    [], [], [], NeedsOnboarding: true));
             }
 
             var plans = new List<SessionModulePlan>();
@@ -47,13 +50,26 @@ namespace Ledgance.Api.Controllers {
                     SubscriptionPlanCatalog.RequiresContactSales(entitlements.Plan)));
             }
 
+            var organization = await _organizations.GetOrganizationAsync(
+                user.OrganizationId, ct);
+
+            // A product is enabled by the signup choice or by a paid subscription for its
+            // module — a customer who pays for a platform always sees it.
+            var products = new HashSet<string>(organization?.Products ?? []);
+
+            foreach (var plan in plans.Where(plan => plan.Plan != nameof(PlanCode.Free))) {
+                products.Add(plan.Module);
+            }
+
             return Result<SessionResponse>.Success(new SessionResponse(
                 user.UserId,
                 user.Email,
                 user.OrganizationId,
+                organization?.Name,
                 user.Role.ToString(),
                 user.Permissions,
                 plans,
+                products,
                 NeedsOnboarding: false));
         }
     }

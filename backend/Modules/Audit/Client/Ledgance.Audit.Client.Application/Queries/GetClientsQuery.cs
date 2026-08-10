@@ -32,8 +32,8 @@ namespace Ledgance.Audit.Client.Application.Queries {
             GetClientsQuery request, CancellationToken ct) {
             var clients = await _clients.ListAsync(request.IncludeArchived, ct);
 
-            return Result<IEnumerable<GetClientsQueryResult>>.Success(clients
-                .Select(client => new GetClientsQueryResult {
+            return Result<IEnumerable<GetClientsQueryResult>>.Success(
+                clients.Select(client => new GetClientsQueryResult {
                     Id = client.Id,
                     Name = client.Name,
                     Email = client.ContactEmail,

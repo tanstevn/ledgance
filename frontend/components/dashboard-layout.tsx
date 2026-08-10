@@ -1,31 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  ShieldCheck,
-  LayoutDashboard,
+  BookOpen,
   Building2,
-  ClipboardCheck,
-  FileText,
-  FileSpreadsheet,
-  Users,
-  Search,
-  Bell,
-  LogOut,
+  Calculator,
   ChevronDown,
-  Settings,
-  Plus,
-  Check,
+  ClipboardCheck,
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
   Menu,
-  X,
-  Sun,
   Moon,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
@@ -37,46 +33,95 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth-context";
 import { useTheme } from "@/components/theme-context";
-import { organizations } from "@/lib/mock-data";
+import { isPlatformEnabled, useSession, type Session } from "@/hooks/session";
+import { planPresentation } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/clients", label: "Clients", icon: Building2 },
+/** Navigation shows only the platforms this organization has activated. */
+const navSections = (session: Session | undefined) => [
   {
-    href: "/dashboard/engagements",
-    label: "Engagements",
-    icon: ClipboardCheck,
+    title: null,
+    items: [{ href: "/dashboard", label: "Overview", icon: LayoutDashboard }],
   },
-  { href: "/dashboard/documents", label: "Documents", icon: FileText },
+  ...(isPlatformEnabled(session, "accounting")
+    ? [
+        {
+          title: "Accounting",
+          items: [
+            {
+              href: "/dashboard/accounting",
+              label: "Entities & books",
+              icon: BookOpen,
+            },
+            {
+              href: "/dashboard/accounting/ai",
+              label: "AI assistant",
+              icon: Sparkles,
+            },
+          ],
+        },
+      ]
+    : []),
+  ...(isPlatformEnabled(session, "audit")
+    ? [
+        {
+          title: "Audit",
+          items: [
+            { href: "/dashboard/audit", label: "Clients", icon: Building2 },
+            {
+              href: "/dashboard/audit/engagements",
+              label: "Engagements",
+              icon: ClipboardCheck,
+            },
+            {
+              href: "/dashboard/audit/ai",
+              label: "AI assistant",
+              icon: Sparkles,
+            },
+          ],
+        },
+      ]
+    : []),
   {
-    href: "/dashboard/working-papers",
-    label: "Working Papers",
-    icon: FileText,
+    title: "Organization",
+    items: [
+      { href: "/dashboard/billing", label: "Plans & billing", icon: CreditCard },
+    ],
   },
-  {
-    href: "/dashboard/trial-balance",
-    label: "Trial Balance",
-    icon: FileSpreadsheet,
-  },
-  { href: "/dashboard/team", label: "Team", icon: Users },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { data: session, isLoading: sessionLoading } = useSession(!!user);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentOrg, setCurrentOrg] = useState(organizations[0]);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (session?.needsOnboarding) {
+      router.replace("/onboarding");
+    }
+  }, [session, router]);
 
   const isActive = (href: string) =>
     href === "/dashboard"
       ? pathname === "/dashboard"
       : pathname.startsWith(href);
 
+  const highestPlan = session?.plans.find((plan) => plan.plan !== "Free");
+  const planLabel = highestPlan
+    ? `${planPresentation[highestPlan.plan]?.name ?? highestPlan.plan} · ${highestPlan.module}`
+    : "Free plan";
+
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen">
       {/* Sidebar */}
       <aside
         className={cn(
@@ -104,79 +149,67 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        {/* Org switcher */}
+        {/* Organization */}
         <div className="p-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-3 rounded-lg border border-border/60 bg-background p-2.5 text-left transition-colors hover:bg-muted/50">
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white"
-                  style={{ backgroundColor: currentOrg.logoColor }}
-                >
-                  {currentOrg.name.charAt(0)}
+          <div className="flex w-full items-center gap-3 rounded-lg border border-border/60 bg-background p-2.5">
+            {sessionLoading ? (
+              <>
+                <Skeleton className="h-8 w-8 rounded-lg" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-28" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
+                  {(session?.organizationName ?? "?").charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <div className="truncate text-sm font-semibold">
-                    {currentOrg.name}
+                    {session?.organizationName ?? "Your organization"}
                   </div>
-                  <div className="text-xs capitalize text-muted-foreground">
-                    {currentOrg.plan} plan
+                  <div className="truncate text-xs text-muted-foreground">
+                    {planLabel}
                   </div>
                 </div>
-                <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="start">
-              <DropdownMenuLabel>Organizations</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {organizations.map((org) => (
-                <DropdownMenuItem
-                  key={org.id}
-                  onClick={() => setCurrentOrg(org)}
-                  className="gap-3"
-                >
-                  <div
-                    className="flex h-6 w-6 items-center justify-center rounded text-xs font-bold text-white"
-                    style={{ backgroundColor: org.logoColor }}
-                  >
-                    {org.name.charAt(0)}
-                  </div>
-                  <span className="flex-1 truncate">{org.name}</span>
-                  {org.id === currentOrg.id && (
-                    <Check className="h-4 w-4 text-primary" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-primary">
-                <Plus className="h-4 w-4" />
-                New organization
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+          {navSections(session).map((section) => (
+            <div key={section.title ?? "root"}>
+              {section.title && (
+                <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {section.title}
+                </div>
               )}
-            >
-              <item.icon className="h-4.5 w-4.5" />
-              {item.label}
-            </Link>
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      isActive(item.href)
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                    )}
+                  >
+                    <item.icon className="h-4.5 w-4.5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
-        {/* Bottom section — dark mode toggle */}
+        {/* Dark mode toggle */}
         <div className="border-t border-border/60 p-3">
           <div className="flex items-center justify-between rounded-lg px-3 py-2">
             <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
@@ -206,7 +239,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col lg:pl-64">
-        {/* Top bar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -215,33 +247,48 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="relative hidden sm:block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search engagements, clients, documents..."
-                className="h-9 w-64 pl-9 lg:w-80"
-              />
-            </div>
+            {session && !sessionLoading && (
+              <Badge variant="secondary" className="hidden gap-1.5 sm:flex">
+                {isPlatformEnabled(session, "accounting") && (
+                  <>
+                    <Calculator className="h-3 w-3 text-emerald-500" />
+                    {planPresentation[
+                      session.plans.find((p) => p.module === "Accounting")
+                        ?.plan ?? "Free"
+                    ]?.name ?? "Free"}
+                  </>
+                )}
+                {isPlatformEnabled(session, "accounting") &&
+                  isPlatformEnabled(session, "audit") && (
+                    <span className="text-muted-foreground">·</span>
+                  )}
+                {isPlatformEnabled(session, "audit") && (
+                  <>
+                    <ShieldCheck className="h-3 w-3 text-sky-500" />
+                    {planPresentation[
+                      session.plans.find((p) => p.module === "Audit")?.plan ??
+                        "Free"
+                    ]?.name ?? "Free"}
+                  </>
+                )}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-4.5 w-4.5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-muted/50">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-br from-sky-500 to-emerald-500 text-xs font-semibold text-white">
-                      {user?.initials || "JA"}
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-sky-500 text-xs font-semibold text-white">
+                      {user?.initials || "?"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden text-left sm:block">
                     <div className="text-sm font-semibold leading-tight">
-                      {user?.name || "Jordan Avery"}
+                      {user?.name}
                     </div>
                     <div className="text-xs capitalize text-muted-foreground">
-                      {user?.role || "manager"}
+                      {session?.role || ""}
                     </div>
                   </div>
                   <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
@@ -257,17 +304,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="gap-2"
-                  onClick={() => router.push("/dashboard/settings")}
+                  onClick={() => router.push("/dashboard/billing")}
                 >
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="gap-2"
-                  onClick={() => router.push("/dashboard/team")}
-                >
-                  <Users className="h-4 w-4" />
-                  Team
+                  <CreditCard className="h-4 w-4" />
+                  Plans & billing
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -282,7 +322,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 p-4 lg:p-8">{children}</main>
       </div>
     </div>

@@ -13,9 +13,9 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Ledgance — Modern Audit Platform",
+  title: "Ledgance — professional accounting & audit platforms",
   description:
-    "Ledgance is the modern audit platform for engagement management, working papers, evidence versioning, and trial balance mapping.",
+    "Two distinct professional products in one ecosystem: Ledgance Accounting for real double-entry bookkeeping and Ledgance Audit for the complete audit lifecycle.",
 };
 
 export default function RootLayout({
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${jakarta.variable} font-sans antialiased`}
+        className={`${inter.variable} ${jakarta.variable} bg-ambient font-sans antialiased`}
       >
         <ThemeProvider>
           <QueryProvider>

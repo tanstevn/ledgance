@@ -21,12 +21,15 @@ interface AuthUser {
   role: string;
 }
 
+export type OAuthProvider = "google" | "linkedin_oidc";
+
 interface AuthContextValue {
   user: AuthUser | null;
   accessToken: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
+  signInWithOAuth: (provider: OAuthProvider, redirectTo: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -103,6 +106,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const signInWithOAuth = useCallback(
+    async (provider: OAuthProvider, redirectTo: string) => {
+      const { error } = await getSupabaseClient().auth.signInWithOAuth({
+        provider,
+        options: { redirectTo },
+      });
+
+      if (error) throw new Error(error.message);
+    },
+    [],
+  );
+
   const signOut = useCallback(async () => {
     await getSupabaseClient().auth.signOut();
     router.push("/");
@@ -124,10 +139,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       signIn,
       signUp,
+      signInWithOAuth,
       signOut,
       resetPassword,
     }),
-    [session, loading, signIn, signUp, signOut, resetPassword],
+    [session, loading, signIn, signUp, signInWithOAuth, signOut, resetPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

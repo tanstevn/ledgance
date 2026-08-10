@@ -1,6 +1,6 @@
 import { PaginatedRequest } from "@/types/request";
 import { PaginatedResult, Result, ResultErrors } from "@/types/result";
-import { get, post, del, put } from "@/util/http";
+import { get, post, postForm, del, put } from "@/util/http";
 
 import {
   QueryClient,
@@ -112,6 +112,50 @@ const useApiMutation = <TResponse, TBody>(
   });
 };
 
+export interface ApiAction<TBody = unknown> {
+  url: string;
+  body?: TBody;
+  method?: MutationType;
+}
+
+/**
+ * A mutation whose target URL is decided per call — for row-level actions like posting
+ * one journal entry or signing off one working paper.
+ */
+const useApiAction = <TResponse = unknown, TBody = unknown>(
+  options?: Omit<
+    UseMutationOptions<TResponse, ResultErrors, ApiAction<TBody>>,
+    "mutationFn"
+  >,
+) =>
+  useMutation<TResponse, ResultErrors, ApiAction<TBody>>({
+    mutationFn: async ({ url, body, method }) => {
+      const action =
+        method === "put" ? put : method === "delete" ? del : post;
+      const result = await action<Result<TResponse>>(
+        formatFullUrl(url),
+        body ?? {},
+      );
+      return result.successful ? result.data : Promise.reject(result.errors);
+    },
+    ...options,
+  });
+
+/** Multipart upload mutation with a per-call URL. */
+const useApiUpload = <TResponse = unknown>(
+  options?: Omit<
+    UseMutationOptions<TResponse, ResultErrors, { url: string; form: FormData }>,
+    "mutationFn"
+  >,
+) =>
+  useMutation<TResponse, ResultErrors, { url: string; form: FormData }>({
+    mutationFn: async ({ url, form }) => {
+      const result = await postForm<Result<TResponse>>(formatFullUrl(url), form);
+      return result.successful ? result.data : Promise.reject(result.errors);
+    },
+    ...options,
+  });
+
 const formatFullUrl = (url: string) => {
   let baseAddr = process.env.NEXT_PUBLIC_API_URL;
 
@@ -134,6 +178,8 @@ export {
   usePaginatedQuery,
   useApiQuery,
   useApiMutation,
+  useApiAction,
+  useApiUpload,
   prefetchApiQuery,
   prefetchPaginatedQuery,
 };

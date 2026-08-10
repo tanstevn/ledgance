@@ -9,7 +9,7 @@ using DomainClient = Ledgance.Audit.Client.Domain.AuditClient;
 namespace Ledgance.Audit.Client.Infrastructure {
     [Table("audit_clients")]
     public class AuditClientModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]

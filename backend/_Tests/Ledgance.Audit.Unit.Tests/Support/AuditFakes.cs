@@ -77,6 +77,14 @@ namespace Ledgance.Audit.Unit.Tests.Support {
                 .Where(member => member.EngagementId == engagementId)
                 .ToList());
 
+        public Task<IReadOnlyList<Guid>> ListEngagementIdsForUserAsync(Guid userId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Guid>>(Members
+                .Where(member => member.UserId == userId)
+                .Select(member => member.EngagementId)
+                .Distinct()
+                .ToList());
+
         public Task<EngagementTeamMember?> FindForUserAsync(Guid engagementId, Guid userId,
             CancellationToken ct) =>
             Task.FromResult(Members.FirstOrDefault(member =>
@@ -155,7 +163,7 @@ namespace Ledgance.Audit.Unit.Tests.Support {
             Task.FromResult(Members.Any(member => member.UserId == userId));
 
         public Task<Guid> CreateOrganizationWithOwnerAsync(string organizationName,
-            Guid ownerUserId, string ownerDisplayName, string ownerEmail,
+            Guid ownerUserId, string ownerDisplayName, string ownerEmail, string? product,
             CancellationToken ct) =>
             Task.FromResult(Guid.NewGuid());
 
@@ -166,5 +174,14 @@ namespace Ledgance.Audit.Unit.Tests.Support {
         public Task<OrganizationMemberInfo?> FindMemberAsync(Guid organizationId, Guid userId,
             CancellationToken ct) =>
             Task.FromResult(Members.FirstOrDefault(member => member.UserId == userId));
+
+        public Task<OrganizationInfo?> GetOrganizationAsync(Guid organizationId,
+            CancellationToken ct) =>
+            Task.FromResult<OrganizationInfo?>(
+                new OrganizationInfo("Test Organization", ["Audit", "Accounting"]));
+
+        public Task AddProductAsync(Guid organizationId, string product,
+            CancellationToken ct) =>
+            Task.CompletedTask;
     }
 }

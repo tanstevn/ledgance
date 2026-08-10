@@ -1,6 +1,33 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
+const columns = [
+  {
+    title: "Ledgance Accounting",
+    links: [
+      { href: "/accounting", label: "Overview" },
+      { href: "/pricing?platform=accounting", label: "Plans & pricing" },
+      { href: "/signup?platform=accounting", label: "Start free" },
+    ],
+  },
+  {
+    title: "Ledgance Audit",
+    links: [
+      { href: "/audit", label: "Overview" },
+      { href: "/pricing?platform=audit", label: "Plans & pricing" },
+      { href: "/signup?platform=audit", label: "Start free" },
+    ],
+  },
+  {
+    title: "Platform",
+    links: [
+      { href: "/#ecosystem", label: "Why both platforms" },
+      { href: "/#security", label: "Security" },
+      { href: "/login", label: "Sign in" },
+    ],
+  },
+];
+
 export function MarketingFooter() {
   return (
     <footer className="border-t border-border/60 bg-muted/30">
@@ -19,125 +46,35 @@ export function MarketingFooter() {
               </span>
             </div>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              The modern audit platform for engagement management, working
-              papers, evidence versioning, and trial balance mapping — built for
-              multi-tenant audit firms.
+              Two professional platforms, one ecosystem: Ledgance Accounting for
+              real double-entry bookkeeping and Ledgance Audit for the complete
+              audit lifecycle. Use one, or connect both.
             </p>
-            {/* <div className="mt-6 flex items-center gap-3">
-              <Link
-                href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              >
-                <Twitter className="h-4 w-4" />
-              </Link>
-              <Link
-                href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              >
-                <Linkedin className="h-4 w-4" />
-              </Link>
-              <Link
-                href="#"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              >
-                <Github className="h-4 w-4" />
-              </Link>
-            </div> */}
           </div>
-          <div>
-            <h4 className="text-sm font-semibold">Product</h4>
-            <ul className="mt-4 space-y-3">
-              <li>
-                <Link
-                  href="/#features"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/#pricing"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/#security"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Security
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold">Company</h4>
-            <ul className="mt-4 space-y-3">
-              <li>
-                <Link
-                  href="#"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold">Legal</h4>
-            <ul className="mt-4 space-y-3">
-              <li>
-                <Link
-                  href="#"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Privacy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Terms
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  SOC 2
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {columns.map((column) => (
+            <div key={column.title}>
+              <h4 className="text-sm font-semibold">{column.title}</h4>
+              <ul className="mt-4 space-y-3">
+                {column.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-8 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            © 2026 Ledgance, Inc. All rights reserved.
+            © 2026 Ledgance. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
-            Built for auditors, by auditors.
+            Built for accountants and auditors.
           </p>
         </div>
       </div>

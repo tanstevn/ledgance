@@ -6,7 +6,7 @@ using Supabase.Postgrest.Models;
 namespace Ledgance.Audit.Engagement.Infrastructure {
     [Table("audit_engagements")]
     public class EngagementModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -70,7 +70,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_engagement_members")]
     public class TeamMemberModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -91,7 +91,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_risks")]
     public class RiskModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -121,7 +121,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_procedures")]
     public class ProcedureModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -157,7 +157,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_working_papers")]
     public class WorkingPaperModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -212,7 +212,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_evidence")]
     public class EvidenceModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -254,7 +254,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_findings")]
     public class FindingModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -293,7 +293,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_reports")]
     public class ReportModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -329,7 +329,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
     [Table("audit_trial_balances")]
     public class TrialBalanceModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]

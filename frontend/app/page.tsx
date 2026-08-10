@@ -1,191 +1,72 @@
 import Link from "next/link";
 import {
-  ShieldCheck,
-  Building2,
-  FileText,
-  GitBranch,
-  CheckCircle2,
   ArrowRight,
-  Lock,
-  Users,
+  BookOpen,
+  Bot,
+  Calculator,
+  CheckCircle2,
   ClipboardCheck,
   FileSpreadsheet,
+  GitBranch,
+  Link2,
+  Lock,
+  Scale,
+  ShieldCheck,
   Sparkles,
-  BarChart3,
-  Layers,
-  Search,
-  Bell,
-  Calendar,
-  Star,
+  Users,
 } from "lucide-react";
 import { MarketingHeader } from "@/components/marketing-header";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-const features = [
+const accountingHighlights = [
+  "Double-entry journal with draft, post and reverse",
+  "Chart of accounts, fiscal periods and reconciliation",
+  "Live trial balance, income statement and balance sheet",
+  "AI that explains, suggests and investigates your books",
+];
+
+const auditHighlights = [
+  "Clients, engagements, teams and planning with materiality",
+  "Working papers with structured sign-offs and review notes",
+  "Versioned evidence, findings and report drafting",
+  "AI that suggests risks, drafts papers and assists review",
+];
+
+const securityPoints = [
   {
-    icon: Building2,
-    title: "Client & Engagement Management",
-    description:
-      "Track every client, engagement, and team assignment. Manage budgets, deadlines, and progress across your entire portfolio from a single command center.",
-    color: "text-sky-500",
-    bg: "bg-sky-50 dark:bg-sky-950/40",
+    icon: Users,
+    title: "Organization isolation",
+    desc: "Every record is scoped to your organization at three enforcement layers, including database row-level security.",
+  },
+  {
+    icon: Lock,
+    title: "Server-side authorization",
+    desc: "Roles and permissions are decided on the server for every request — the interface only renders what you may do.",
   },
   {
     icon: GitBranch,
-    title: "Document & Evidence Versioning",
-    description:
-      "Every piece of audit evidence is versioned and traceable. Upload, supersede, and compare document versions with a full audit trail.",
-    color: "text-emerald-500",
-    bg: "bg-emerald-50 dark:bg-emerald-950/40",
+    title: "Append-only activity trail",
+    desc: "Every material change is recorded with who, what and when. Posted accounting entries are immutable by design.",
   },
   {
-    icon: ClipboardCheck,
-    title: "Working Papers with Sign-offs",
-    description:
-      "Prepare, review, and approve working papers with structured sign-off workflows. Add review notes, clear comments, and cross-reference lead sheets.",
-    color: "text-amber-500",
-    bg: "bg-amber-50 dark:bg-amber-950/40",
-  },
-  {
-    icon: FileSpreadsheet,
-    title: "Trial Balance & Account Mapping",
-    description:
-      "Import trial balances in seconds. Map accounts to financial statement line items, assign assertions, and flag risk areas — all with intelligent suggestions.",
-    color: "text-violet-500",
-    bg: "bg-violet-50 dark:bg-violet-950/40",
-  },
-];
-
-const workflow = [
-  {
-    icon: Building2,
-    step: "01",
-    title: "Set up your engagement",
-    description:
-      "Create a client, define the engagement scope, assign your team, and set the budget and timeline.",
-  },
-  {
-    icon: FileSpreadsheet,
-    step: "02",
-    title: "Import the trial balance",
-    description:
-      "Upload the GL trial balance. Ledgance maps accounts to financial statement line items and flags high-risk areas.",
-  },
-  {
-    icon: FileText,
-    step: "03",
-    title: "Gather evidence",
-    description:
-      "Upload confirmations, statements, and supporting docs. Every file is versioned with a complete change history.",
-  },
-  {
-    icon: ClipboardCheck,
-    step: "04",
-    title: "Prepare working papers",
-    description:
-      "Build lead sheets, document conclusions, cross-reference supporting papers, and submit for review.",
-  },
-  {
-    icon: CheckCircle2,
-    step: "05",
-    title: "Review and sign off",
-    description:
-      "Managers review, leave notes, and approve. Partners give final sign-off. The engagement file is complete and archived.",
-  },
-];
-
-const stats = [
-  { value: "40%", label: "Faster fieldwork" },
-  { value: "100%", label: "Versioned evidence" },
-  { value: "5x", label: "Review throughput" },
-  { value: "SOC 2", label: "Type II certified" },
-];
-
-const testimonials = [
-  {
-    quote:
-      "Ledgance replaced three separate tools for us. Working paper sign-offs that used to take a week now happen in a day.",
-    author: "Sarah Whitman",
-    role: "Audit Partner, Northgate Advisory",
-    initials: "SW",
-  },
-  {
-    quote:
-      "The trial balance mapping alone saved my team dozens of hours this season. Account mapping suggestions are remarkably accurate.",
-    author: "David Cho",
-    role: "Partner, Meridian Audit Partners",
-    initials: "DC",
-  },
-  {
-    quote:
-      "Document versioning means we never lose track of which evidence supports which conclusion. The audit trail is impeccable.",
-    author: "Maya Singh",
-    role: "Senior Manager, Meridian Audit Partners",
-    initials: "MS",
-  },
-];
-
-const pricingPlans = [
-  {
-    name: "Starter",
-    price: "$89",
-    period: "/user/mo",
-    description: "For small firms getting started with digital audits.",
-    features: [
-      "Up to 10 active engagements",
-      "2 organizations",
-      "Document versioning",
-      "Working paper sign-offs",
-      "Email support",
-    ],
-    cta: "Start free trial",
-    highlighted: false,
-  },
-  {
-    name: "Professional",
-    price: "$199",
-    period: "/user/mo",
-    description: "For growing firms managing multiple clients.",
-    features: [
-      "Unlimited engagements",
-      "5 organizations",
-      "Advanced trial balance mapping",
-      "Review notes & cross-references",
-      "Custom assertions",
-      "Priority support",
-    ],
-    cta: "Start free trial",
-    highlighted: true,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    period: "",
-    description: "For large firms with advanced needs.",
-    features: [
-      "Everything in Professional",
-      "Unlimited organizations",
-      "SSO & SCIM provisioning",
-      "Custom workflows & templates",
-      "Dedicated success manager",
-      "On-premise deployment option",
-    ],
-    cta: "Contact sales",
-    highlighted: false,
+    icon: Bot,
+    title: "AI under control",
+    desc: "AI reads only what you could already read, its output is always a reviewable proposal, and agents act through authorized application capabilities only.",
   },
 ];
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-ambient">
       <MarketingHeader />
       <main>
+        {/* Hero */}
         <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-grid opacity-[0.15]" />
-          <div className="absolute left-1/2 top-0 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]" />
-          <div className="absolute right-0 top-40 -z-10 h-[400px] w-[400px] rounded-full bg-emerald-500/10 blur-[100px]" />
+          <div className="pointer-events-none absolute inset-0 bg-grid opacity-[0.15]" />
+          <div className="pointer-events-none absolute left-1/3 top-0 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-[120px]" />
+          <div className="pointer-events-none absolute right-0 top-40 -z-10 h-[400px] w-[400px] rounded-full bg-sky-500/10 blur-[100px]" />
           <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
             <div className="mx-auto max-w-3xl text-center">
               <div className="mb-6 flex justify-center animate-fade-in-up">
@@ -194,345 +75,249 @@ export default function Home() {
                   className="gap-1.5 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs font-medium backdrop-blur"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  Now with AI-assisted account mapping
+                  Two platforms · one professional ecosystem
                 </Badge>
               </div>
               <h1 className="animate-fade-in-up font-display text-4xl font-bold tracking-tight text-balance delay-100 sm:text-5xl lg:text-6xl">
-                The audit platform that{" "}
-                <span className="bg-gradient-to-r from-sky-500 to-emerald-500 bg-clip-text text-transparent">
-                  works the way you do
+                Professional{" "}
+                <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+                  accounting
+                </span>{" "}
+                and{" "}
+                <span className="bg-gradient-to-r from-sky-500 to-indigo-500 bg-clip-text text-transparent">
+                  audit
                 </span>
+                , done right
               </h1>
               <p className="mx-auto mt-6 max-w-2xl animate-fade-in-up text-lg leading-relaxed text-muted-foreground text-balance delay-200">
-                Ledgance brings engagement management, working papers, evidence
-                versioning, and trial balance mapping into one modern,
-                collaborative workspace — built for multi-tenant audit firms.
+                Ledgance is two distinct products: Ledgance Accounting for real
+                double-entry bookkeeping, and Ledgance Audit for the complete
+                audit lifecycle. Pick the one you need — each stands entirely on
+                its own.
               </p>
               <div className="mt-8 flex animate-fade-in-up flex-col items-center justify-center gap-4 delay-300 sm:flex-row">
-                <Link href="/signup">
-                  <Button
-                    size="lg"
-                    className="h-12 px-8 text-base font-semibold"
-                  >
-                    Get started free
+                <Link href="/#choose">
+                  <Button size="lg" className="h-12 px-8 text-base font-semibold">
+                    Choose your platform
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Link href="/login">
+                <Link href="/pricing">
                   <Button
                     variant="outline"
                     size="lg"
                     className="h-12 px-8 text-base font-semibold"
                   >
-                    Sign in
+                    View plans
                   </Button>
                 </Link>
               </div>
               <p className="mt-4 animate-fade-in-up text-sm text-muted-foreground delay-400">
-                No credit card required · 14-day free trial · Cancel anytime
+                Both platforms include a genuinely useful free plan
               </p>
             </div>
+          </div>
+        </section>
 
-            {/* Hero preview mockup */}
-            <div className="mt-16 animate-fade-in-up delay-500">
-              <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl shadow-primary/5">
-                <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-red-400" />
-                    <div className="h-3 w-3 rounded-full bg-amber-400" />
-                    <div className="h-3 w-3 rounded-full bg-emerald-400" />
-                  </div>
-                  <div className="ml-4 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Lock className="h-3 w-3" />
-                    app.ledgance.io/dashboard
-                  </div>
+        {/* Platform chooser */}
+        <section id="choose" className="scroll-mt-20 border-y border-border/60 bg-muted/20">
+          <div className="mx-auto max-w-7xl px-6 py-20 lg:py-24">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+                What do you need Ledgance for?
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground text-balance">
+                Accounting and Audit are separate products with their own plans.
+                You are never required to subscribe to both.
+              </p>
+            </div>
+            <div className="mt-14 grid gap-8 lg:grid-cols-2">
+              {/* Accounting card */}
+              <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/60 bg-card p-8 transition-all hover:border-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/5 lg:p-10">
+                <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40">
+                  <Calculator className="h-6 w-6 text-emerald-500" />
                 </div>
-                <div className="grid grid-cols-12 gap-0">
-                  {/* Sidebar mock */}
-                  <div className="col-span-3 hidden border-r border-border/60 p-4 lg:block">
-                    <div className="mb-4 flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                        <ShieldCheck className="h-4 w-4 text-primary-foreground" />
-                      </div>
-                      <div className="h-3 w-24 rounded bg-muted" />
-                    </div>
-                    <div className="space-y-2">
-                      {[
-                        "Dashboard",
-                        "Clients",
-                        "Engagements",
-                        "Documents",
-                        "Working Papers",
-                        "Trial Balance",
-                      ].map((item, i) => (
-                        <div
-                          key={item}
-                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
-                            i === 0
-                              ? "bg-primary/10 font-medium text-primary"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          <div className="h-3.5 w-3.5 rounded bg-current opacity-60" />
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Main content mock */}
-                  <div className="col-span-12 p-6 lg:col-span-9">
-                    <div className="mb-6 flex items-center justify-between">
-                      <div>
-                        <div className="h-5 w-48 rounded bg-foreground/80" />
-                        <div className="mt-2 h-3 w-32 rounded bg-muted" />
-                      </div>
-                      <div className="h-9 w-28 rounded-lg bg-primary" />
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      {[
-                        {
-                          label: "Active Engagements",
-                          value: "6",
-                          icon: BarChart3,
-                          color: "text-sky-500",
-                        },
-                        {
-                          label: "Papers for Review",
-                          value: "12",
-                          icon: ClipboardCheck,
-                          color: "text-amber-500",
-                        },
-                        {
-                          label: "Budget Utilization",
-                          value: "78%",
-                          icon: Layers,
-                          color: "text-emerald-500",
-                        },
-                      ].map((stat) => (
-                        <div
-                          key={stat.label}
-                          className="rounded-xl border border-border/60 bg-background p-4"
-                        >
-                          <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                          <div className="mt-3 text-2xl font-bold">
-                            {stat.value}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {stat.label}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 rounded-xl border border-border/60 bg-background p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="h-3.5 w-24 rounded bg-foreground/60" />
-                        <div className="h-3.5 w-16 rounded bg-muted" />
-                      </div>
-                      <div className="space-y-2">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-3 rounded-lg border border-border/40 p-3"
-                          >
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-sky-400 to-emerald-400" />
-                            <div className="flex-1">
-                              <div className="h-3 w-32 rounded bg-foreground/40" />
-                              <div className="mt-1.5 h-2.5 w-48 rounded bg-muted" />
-                            </div>
-                            <div className="h-6 w-16 rounded-full bg-emerald-100 dark:bg-emerald-950" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                <h3 className="mt-6 font-display text-2xl font-bold">
+                  Ledgance Accounting
+                </h3>
+                <p className="mt-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  I keep the books
+                </p>
+                <p className="mt-4 leading-relaxed text-muted-foreground">
+                  Run real double-entry books for one entity or many: journal
+                  entries, fiscal periods, reconciliation, live financial
+                  statements — with AI assistance built into the workflow.
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {accountingHighlights.map((item) => (
+                    <li key={item} className="flex items-start gap-3">
+                      <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 flex-shrink-0 text-emerald-500" />
+                      <span className="text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-8 flex flex-1 items-end gap-3">
+                  <Link href="/signup?platform=accounting" className="flex-1">
+                    <Button className="w-full bg-emerald-600 font-semibold hover:bg-emerald-700">
+                      Try Accounting free
+                    </Button>
+                  </Link>
+                  <Link href="/accounting" className="flex-1">
+                    <Button variant="outline" className="w-full font-semibold">
+                      Explore Accounting
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Audit card */}
+              <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/60 bg-card p-8 transition-all hover:border-sky-500/40 hover:shadow-xl hover:shadow-sky-500/5 lg:p-10">
+                <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-sky-500/10 blur-3xl" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-950/40">
+                  <ClipboardCheck className="h-6 w-6 text-sky-500" />
+                </div>
+                <h3 className="mt-6 font-display text-2xl font-bold">
+                  Ledgance Audit
+                </h3>
+                <p className="mt-1 text-sm font-medium text-sky-600 dark:text-sky-400">
+                  I audit the books
+                </p>
+                <p className="mt-4 leading-relaxed text-muted-foreground">
+                  Manage the full audit lifecycle: engagements and teams,
+                  planning and risk, procedures, working papers with sign-offs,
+                  versioned evidence, findings and reports.
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {auditHighlights.map((item) => (
+                    <li key={item} className="flex items-start gap-3">
+                      <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 flex-shrink-0 text-sky-500" />
+                      <span className="text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-8 flex flex-1 items-end gap-3">
+                  <Link href="/signup?platform=audit" className="flex-1">
+                    <Button className="w-full bg-sky-600 font-semibold hover:bg-sky-700">
+                      Try Audit free
+                    </Button>
+                  </Link>
+                  <Link href="/audit" className="flex-1">
+                    <Button variant="outline" className="w-full font-semibold">
+                      Explore Audit
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Stats bar */}
-        <section className="border-y border-border/60 bg-muted/20">
-          <div className="mx-auto max-w-7xl px-6 py-12">
-            <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-              {stats.map((stat) => (
-                <div key={stat.label} className="text-center">
-                  <div className="font-display text-3xl font-bold text-primary lg:text-4xl">
-                    {stat.value}
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Features */}
-        <section id="features" className="scroll-mt-20">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
-            <div className="mx-auto max-w-2xl text-center">
-              <Badge variant="secondary" className="mb-4">
-                Platform
-              </Badge>
-              <h2 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-                Everything your audit team needs
-              </h2>
-              <p className="mt-4 text-lg text-muted-foreground text-balance">
-                Four core modules that cover the entire audit lifecycle — from
-                engagement setup to final sign-off.
-              </p>
-            </div>
-            <div className="mt-16 grid gap-6 md:grid-cols-2">
-              {features.map((feature) => (
-                <div
-                  key={feature.title}
-                  className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-8 transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
-                >
-                  <div
-                    className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl ${feature.bg}`}
-                  >
-                    <feature.icon className={`h-6 w-6 ${feature.color}`} />
-                  </div>
-                  <h3 className="font-display text-xl font-semibold">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-3 leading-relaxed text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section id="how-it-works" className="scroll-mt-20 bg-muted/20">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
-            <div className="mx-auto max-w-2xl text-center">
-              <Badge variant="secondary" className="mb-4">
-                Workflow
-              </Badge>
-              <h2 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-                From planning to sign-off in five steps
-              </h2>
-              <p className="mt-4 text-lg text-muted-foreground text-balance">
-                A structured workflow that mirrors how auditors actually work —
-                not a generic project management tool retrofitted for audit.
-              </p>
-            </div>
-            <div className="mt-16 grid gap-6 md:grid-cols-3 lg:grid-cols-5">
-              {workflow.map((step, i) => (
-                <div
-                  key={step.step}
-                  className="relative rounded-2xl border border-border/60 bg-card p-6"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-                      <step.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="font-display text-2xl font-bold text-muted-foreground/30">
-                      {step.step}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 font-semibold">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {step.description}
-                  </p>
-                  {i < workflow.length - 1 && (
-                    <ArrowRight className="absolute -right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-border lg:block" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Security */}
-        <section id="security" className="scroll-mt-20">
+        {/* Ecosystem — better together, never required */}
+        <section id="ecosystem" className="scroll-mt-20">
           <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div>
                 <Badge variant="secondary" className="mb-4">
-                  Security & Compliance
+                  One ecosystem
                 </Badge>
                 <h2 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-                  Built for the trust that audit demands
+                  Independent by design. Better when connected.
                 </h2>
                 <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-                  Every document, sign-off, and review note is captured in an
-                  immutable audit trail. Data is encrypted at rest and in
-                  transit, with per-tenant isolation and role-based access
-                  controls.
+                  Neither platform requires the other. Audit works with trial
+                  balances imported from any accounting system, and Accounting
+                  never needs an auditor in the room. But when one organization
+                  uses both, they can connect.
                 </p>
                 <div className="mt-8 space-y-4">
-                  {[
-                    {
-                      icon: Lock,
-                      title: "End-to-end encryption",
-                      desc: "AES-256 at rest, TLS 1.3 in transit",
-                    },
-                    {
-                      icon: Users,
-                      title: "Multi-tenant isolation",
-                      desc: "Per-organization data separation with RLS",
-                    },
-                    {
-                      icon: ShieldCheck,
-                      title: "SOC 2 Type II",
-                      desc: "Independently audited and certified",
-                    },
-                    {
-                      icon: GitBranch,
-                      title: "Immutable audit trail",
-                      desc: "Every action logged and traceable",
-                    },
-                  ].map((item) => (
-                    <div key={item.title} className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                        <item.icon className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">{item.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {item.desc}
-                        </p>
-                      </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <Link2 className="h-5 w-5 text-primary" />
                     </div>
-                  ))}
+                    <div>
+                      <h4 className="font-semibold">
+                        Authorized context sharing
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        An admin can allow Audit to read the organization&apos;s
+                        own Accounting books — entities, fiscal periods and
+                        trial balances — with every import recorded in the audit
+                        trail.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <FileSpreadsheet className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">
+                        External context always works
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        No Ledgance Accounting? Audit imports client-provided
+                        trial balances from CSV exports of any accounting
+                        system. Nothing about Audit depends on Accounting.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <Scale className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Your choice, always</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Subscribe to one platform, the other, or both. The
+                        connection is opt-in per organization and can be turned
+                        off at any time.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="relative">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-sky-500/10 to-emerald-500/10 blur-2xl" />
+                <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-emerald-500/10 to-sky-500/10 blur-2xl" />
                 <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-8">
-                  <div className="flex items-center gap-3 border-b border-border/60 pb-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500">
-                      <ShieldCheck className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-display font-bold">
-                        SOC 2 Type II
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-1 flex-col items-center rounded-2xl border border-emerald-500/30 bg-emerald-50/50 p-5 text-center dark:bg-emerald-950/20">
+                      <BookOpen className="h-7 w-7 text-emerald-500" />
+                      <div className="mt-2 font-display text-sm font-bold">
+                        Accounting
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        Certified & Compliant
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        The books
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                      <Link2 className="h-5 w-5 text-primary" />
+                      <span className="text-[10px] font-medium uppercase tracking-wide">
+                        optional
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col items-center rounded-2xl border border-sky-500/30 bg-sky-50/50 p-5 text-center dark:bg-sky-950/20">
+                      <ShieldCheck className="h-7 w-7 text-sky-500" />
+                      <div className="mt-2 font-display text-sm font-bold">
+                        Audit
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        The assurance
                       </div>
                     </div>
                   </div>
                   <div className="mt-6 space-y-3">
                     {[
-                      "Security",
-                      "Availability",
-                      "Processing Integrity",
-                      "Confidentiality",
-                      "Privacy",
-                    ].map((cert) => (
+                      "Trial balances flow into engagements with provenance",
+                      "Sharing requires both plans to include it — and an admin to enable it",
+                      "Every consumption is recorded in the audit trail",
+                    ].map((line) => (
                       <div
-                        key={cert}
-                        className="flex items-center justify-between rounded-lg border border-border/60 bg-background px-4 py-3"
+                        key={line}
+                        className="flex items-center gap-3 rounded-lg border border-border/60 bg-background px-4 py-3"
                       >
-                        <span className="text-sm font-medium">{cert}</span>
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        <CheckCircle2 className="h-4.5 w-4.5 flex-shrink-0 text-primary" />
+                        <span className="text-sm">{line}</span>
                       </div>
                     ))}
                   </div>
@@ -542,114 +327,34 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Testimonials */}
-        <section className="bg-muted/20">
+        {/* Security */}
+        <section id="security" className="scroll-mt-20 bg-muted/20">
           <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
             <div className="mx-auto max-w-2xl text-center">
               <Badge variant="secondary" className="mb-4">
-                Trusted by auditors
+                Security by design
               </Badge>
               <h2 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-                What audit teams say
-              </h2>
-            </div>
-            <div className="mt-16 grid gap-6 md:grid-cols-3">
-              {testimonials.map((t) => (
-                <div
-                  key={t.author}
-                  className="flex flex-col rounded-2xl border border-border/60 bg-card p-8"
-                >
-                  <div className="flex gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className="h-4 w-4 fill-amber-400 text-amber-400"
-                      />
-                    ))}
-                  </div>
-                  <p className="mt-4 flex-1 leading-relaxed text-foreground/90">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-                  <div className="mt-6 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-emerald-400 text-sm font-semibold text-white">
-                      {t.initials}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">{t.author}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {t.role}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing */}
-        <section id="pricing" className="scroll-mt-20">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:py-28">
-            <div className="mx-auto max-w-2xl text-center">
-              <Badge variant="secondary" className="mb-4">
-                Pricing
-              </Badge>
-              <h2 className="font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-                Simple, transparent pricing
+                Built for work that has to stand up to scrutiny
               </h2>
               <p className="mt-4 text-lg text-muted-foreground text-balance">
-                Per-user pricing that scales with your firm. No hidden fees, no
-                surprises.
+                Financial records and audit files demand more than a generic SaaS
+                security page. This is how Ledgance is actually built.
               </p>
             </div>
-            <div className="mt-16 grid gap-6 lg:grid-cols-3">
-              {pricingPlans.map((plan) => (
+            <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {securityPoints.map((point) => (
                 <div
-                  key={plan.name}
-                  className={`relative flex flex-col rounded-2xl border p-8 ${
-                    plan.highlighted
-                      ? "border-primary bg-primary/5 shadow-xl shadow-primary/10"
-                      : "border-border/60 bg-card"
-                  }`}
+                  key={point.title}
+                  className="rounded-2xl border border-border/60 bg-card p-6"
                 >
-                  {plan.highlighted && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="px-3 py-1 text-xs font-semibold">
-                        Most popular
-                      </Badge>
-                    </div>
-                  )}
-                  <h3 className="font-display text-xl font-bold">
-                    {plan.name}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {plan.description}
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                    <point.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="mt-4 font-semibold">{point.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {point.desc}
                   </p>
-                  <div className="mt-6 flex items-baseline gap-1">
-                    <span className="font-display text-4xl font-bold">
-                      {plan.price}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {plan.period}
-                    </span>
-                  </div>
-                  <div className="mt-6 space-y-3">
-                    {plan.features.map((feat) => (
-                      <div key={feat} className="flex items-center gap-3">
-                        <CheckCircle2 className="h-4.5 w-4.5 flex-shrink-0 text-emerald-500" />
-                        <span className="text-sm">{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 flex-1" />
-                  <Link href="/signup">
-                    <Button
-                      className="w-full"
-                      variant={plan.highlighted ? "default" : "outline"}
-                    >
-                      {plan.cta}
-                    </Button>
-                  </Link>
                 </div>
               ))}
             </div>
@@ -658,33 +363,42 @@ export default function Home() {
 
         {/* CTA */}
         <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-sky-500 to-emerald-500" />
-          <div className="absolute inset-0 bg-grid opacity-10" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-600" />
+          <div className="pointer-events-none absolute inset-0 bg-grid opacity-10" />
           <div className="relative mx-auto max-w-4xl px-6 py-20 text-center lg:py-28">
             <h2 className="font-display text-3xl font-bold tracking-tight text-white text-balance sm:text-4xl lg:text-5xl">
-              Ready to modernize your audit practice?
+              Start with the platform you actually need
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80 text-balance">
-              Join the firms that have moved their entire audit workflow to
-              Ledgance. Start your free trial today.
+              Free plans on both sides — real functionality, not a demo. Upgrade
+              when your practice grows.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/signup">
+              <Link href="/signup?platform=accounting">
                 <Button
                   size="lg"
-                  className="h-12 bg-white px-8 text-base font-semibold text-primary hover:bg-white/90"
+                  className="h-12 bg-white px-8 text-base font-semibold text-emerald-700 hover:bg-white/90"
                 >
-                  Get started free
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <Calculator className="mr-2 h-4 w-4" />
+                  Try Accounting
                 </Button>
               </Link>
-              <Link href="/login">
+              <Link href="/signup?platform=audit">
+                <Button
+                  size="lg"
+                  className="h-12 bg-white px-8 text-base font-semibold text-sky-700 hover:bg-white/90"
+                >
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  Try Audit
+                </Button>
+              </Link>
+              <Link href="/pricing">
                 <Button
                   size="lg"
                   variant="outline"
                   className="h-12 border-white/30 bg-white/10 px-8 text-base font-semibold text-white hover:bg-white/20 hover:text-white"
                 >
-                  Sign in
+                  View plans
                 </Button>
               </Link>
             </div>

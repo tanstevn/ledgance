@@ -14,6 +14,7 @@ namespace Ledgance.Audit.Engagement.Application.Ports {
     public interface ITeamRepository {
         Task<IReadOnlyList<EngagementTeamMember>> ListAsync(Guid engagementId, CancellationToken ct);
         Task<EngagementTeamMember?> FindForUserAsync(Guid engagementId, Guid userId, CancellationToken ct);
+        Task<IReadOnlyList<Guid>> ListEngagementIdsForUserAsync(Guid userId, CancellationToken ct);
         Task AddAsync(EngagementTeamMember member, CancellationToken ct);
         Task RemoveAsync(Guid memberId, CancellationToken ct);
     }

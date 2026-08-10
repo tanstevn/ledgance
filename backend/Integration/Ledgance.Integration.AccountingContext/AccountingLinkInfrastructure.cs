@@ -8,7 +8,7 @@ using Supabase.Postgrest.Models;
 namespace Ledgance.Integration.AccountingContext {
     [Table("integration_accounting_links")]
     public class AccountingLinkModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]

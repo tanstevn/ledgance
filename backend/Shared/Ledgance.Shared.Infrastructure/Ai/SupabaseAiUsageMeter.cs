@@ -8,7 +8,7 @@ using Constants = Supabase.Postgrest.Constants;
 namespace Ledgance.Shared.Infrastructure.Ai {
     [Table("ai_usage")]
     public class AiUsageModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]

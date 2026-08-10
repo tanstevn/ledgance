@@ -105,6 +105,36 @@ const common = async (
 const get = async <T>(url: string, queryParams?: any): Promise<T> =>
   common("GET", url, undefined, queryParams);
 
+/** Multipart upload — the browser sets the Content-Type boundary itself. */
+const postForm = async <T = any>(url: string, form: FormData): Promise<T> => {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...(await authorizationHeader()),
+  };
+
+  let response: Response;
+
+  try {
+    response = await fetch(url, { method: "POST", headers, body: form });
+  } catch {
+    return Promise.reject(["Unable to reach the server."] as ResultErrors);
+  }
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errors = payload?.errors;
+
+    return Promise.reject(
+      (Array.isArray(errors) && errors.length > 0
+        ? errors
+        : [`Request failed with status ${response.status}.`]) as ResultErrors,
+    );
+  }
+
+  return payload;
+};
+
 const post = async <T = any>(url: string, body: any): Promise<T> =>
   common("POST", url, body);
 
@@ -114,4 +144,4 @@ const del = async <T = any>(url: any, body: any): Promise<T> =>
 const put = async <T = any>(url: any, body: any): Promise<T> =>
   common("PUT", url, body);
 
-export { get, post, del, put };
+export { get, post, postForm, del, put };

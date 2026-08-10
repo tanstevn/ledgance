@@ -25,11 +25,13 @@ namespace Ledgance.Shared.Infrastructure.Identity {
         }
 
         public async Task<Guid> CreateOrganizationWithOwnerAsync(string organizationName,
-            Guid ownerUserId, string ownerDisplayName, string ownerEmail, CancellationToken ct) {
+            Guid ownerUserId, string ownerDisplayName, string ownerEmail, string? product,
+            CancellationToken ct) {
             var organization = new OrganizationModel {
                 Id = Guid.NewGuid(),
                 Name = organizationName,
                 Slug = BuildSlug(organizationName),
+                Products = product is null ? ["Audit", "Accounting"] : [product],
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -47,6 +49,35 @@ namespace Ledgance.Shared.Infrastructure.Identity {
             }, cancellationToken: ct);
 
             return organization.Id;
+        }
+
+        public async Task<OrganizationInfo?> GetOrganizationAsync(Guid organizationId,
+            CancellationToken ct) {
+            var organizations = await _client.From<OrganizationModel>()
+                .Filter("id", Constants.Operator.Equals, organizationId.ToString())
+                .Get(ct);
+
+            var organization = organizations.Models.FirstOrDefault();
+
+            return organization is null
+                ? null
+                : new OrganizationInfo(organization.Name, organization.Products);
+        }
+
+        public async Task AddProductAsync(Guid organizationId, string product,
+            CancellationToken ct) {
+            var organizations = await _client.From<OrganizationModel>()
+                .Filter("id", Constants.Operator.Equals, organizationId.ToString())
+                .Get(ct);
+
+            var organization = organizations.Models.FirstOrDefault();
+
+            if (organization is null || organization.Products.Contains(product)) {
+                return;
+            }
+
+            organization.Products.Add(product);
+            await _client.From<OrganizationModel>().Update(organization, cancellationToken: ct);
         }
 
         public async Task<IReadOnlyList<OrganizationMemberInfo>> ListMembersAsync(

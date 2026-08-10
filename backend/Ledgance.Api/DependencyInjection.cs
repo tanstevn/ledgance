@@ -47,7 +47,11 @@ namespace Ledgance.Api {
                 });
             });
 
-            services.AddControllers();
+            // Enums travel as their names ("FinancialStatement"), matching what the
+            // frontend sends and what the response DTOs already emit via ToString().
+            services.AddControllers().AddJsonOptions(options =>
+                options.JsonSerializerOptions.Converters.Add(
+                    new System.Text.Json.Serialization.JsonStringEnumConverter()));
             services.AddEndpointsApiExplorer();
 
             var moduleAssemblies = new[] {

@@ -30,7 +30,7 @@ namespace Ledgance.Shared.Infrastructure.Onboarding {
 
             var organizationId = await _directory.CreateOrganizationWithOwnerAsync(
                 request.OrganizationName.Trim(), principal.UserId, displayName,
-                principal.Email, ct);
+                principal.Email, request.Product, ct);
 
             return Result<ProvisionOrganizationCommandResult>
                 .Success(new ProvisionOrganizationCommandResult { OrganizationId = organizationId });

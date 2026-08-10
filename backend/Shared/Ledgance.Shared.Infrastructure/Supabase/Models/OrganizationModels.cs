@@ -4,7 +4,7 @@ using Supabase.Postgrest.Models;
 namespace Ledgance.Shared.Infrastructure.Supabase.Models {
     [Table("organizations")]
     public class OrganizationModel : BaseModel, IEntityModel {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("name")]
@@ -13,13 +13,16 @@ namespace Ledgance.Shared.Infrastructure.Supabase.Models {
         [Column("slug")]
         public string Slug { get; set; } = string.Empty;
 
+        [Column("products")]
+        public List<string> Products { get; set; } = [];
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
     }
 
     [Table("organization_members")]
     public class OrganizationMemberModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -46,7 +49,7 @@ namespace Ledgance.Shared.Infrastructure.Supabase.Models {
 
     [Table("organization_subscriptions")]
     public class OrganizationSubscriptionModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]

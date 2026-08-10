@@ -6,7 +6,7 @@ using Supabase.Postgrest.Models;
 namespace Ledgance.Accounting.Ledger.Infrastructure {
     [Table("accounting_entities")]
     public class AccountingEntityModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -30,7 +30,7 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
 
     [Table("accounting_accounts")]
     public class AccountModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -63,7 +63,7 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
 
     [Table("accounting_fiscal_periods")]
     public class FiscalPeriodModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -96,7 +96,7 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
 
     [Table("accounting_journal_entries")]
     public class JournalEntryModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -151,7 +151,7 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
 
     [Table("accounting_ledger_lines")]
     public class LedgerLineModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -184,7 +184,7 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
 
     [Table("accounting_reconciliations")]
     public class ReconciliationModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -232,7 +232,7 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
 
     [Table("accounting_documents")]
     public class AccountingDocumentModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]

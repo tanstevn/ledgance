@@ -17,7 +17,7 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
     /// </summary>
     [Table("audit_clients")]
     public class ClientRefModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]

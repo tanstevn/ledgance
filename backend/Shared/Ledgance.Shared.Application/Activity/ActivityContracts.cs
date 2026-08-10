@@ -30,5 +30,13 @@ namespace Ledgance.Shared.Application.Activity {
     public interface IActivityReader {
         Task<IReadOnlyList<RecordedActivity>> ListAsync(Guid? contextId,
             int limit, CancellationToken ct);
+
+        /// <summary>
+        /// The newest entries across a whole module, organization-scoped by the store.
+        /// Callers with confinement rules (Audit's team model) filter further before
+        /// returning anything to a user.
+        /// </summary>
+        Task<IReadOnlyList<RecordedActivity>> ListRecentAsync(string module, int limit,
+            CancellationToken ct);
     }
 }

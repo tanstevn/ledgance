@@ -8,7 +8,7 @@ using Constants = Supabase.Postgrest.Constants;
 namespace Ledgance.Shared.Infrastructure.Activity {
     [Table("activity_log")]
     public class ActivityLogModel : BaseModel, IEntityModel, IOrganizationOwned {
-        [PrimaryKey("id", false)]
+        [PrimaryKey("id", true)]
         public Guid Id { get; set; }
 
         [Column("organization_id")]
@@ -88,10 +88,26 @@ namespace Ledgance.Shared.Infrastructure.Activity {
                 .Get(ct);
 
             return rows.Models
-                .Select(row => new RecordedActivity(row.Id, row.Module, row.Action,
-                    row.SubjectType, row.SubjectId, row.Summary, row.ContextId,
-                    row.ActorUserId, row.ActorEmail, row.OccurredAt))
+                .Select(ToRecord)
                 .ToList();
         }
+
+        public async Task<IReadOnlyList<RecordedActivity>> ListRecentAsync(string module,
+            int limit, CancellationToken ct) {
+            var rows = await _repository.Query()
+                .Filter("module", Constants.Operator.Equals, module)
+                .Order("occurred_at", Constants.Ordering.Descending)
+                .Limit(limit)
+                .Get(ct);
+
+            return rows.Models
+                .Select(ToRecord)
+                .ToList();
+        }
+
+        private static RecordedActivity ToRecord(ActivityLogModel row) =>
+            new(row.Id, row.Module, row.Action, row.SubjectType, row.SubjectId,
+                row.Summary, row.ContextId, row.ActorUserId, row.ActorEmail,
+                row.OccurredAt);
     }
 }
