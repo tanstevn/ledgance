@@ -26,11 +26,17 @@ export interface Session {
 /**
  * Server-resolved identity, organization and plan context. Use it to render, never to
  * authorize — the API re-checks every gated operation.
+ *
+ * Every dashboard page gates its own queries on this, so its staleness sets the floor for
+ * navigation speed. It changes only through actions the app itself performs (onboarding,
+ * product activation, billing), each of which invalidates the "session" key — so between
+ * those it can be trusted for a long time instead of re-paying its cost per navigation.
  */
 export const useSession = (enabled = true) =>
   useApiQuery<Session>("/api/session", {
     queryKey: ["session"],
     enabled,
+    staleTime: 10 * 60_000,
   });
 
 /**

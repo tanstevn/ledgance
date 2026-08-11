@@ -47,7 +47,7 @@ namespace Ledgance.Audit.Engagement.Application.Fieldwork {
             await _procedures.AddAsync(procedure, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "procedure.planned",
-                "Procedure", procedure.Id, $"Procedure '{procedure.Title}' was planned.",
+                "Procedure", procedure.Id, $"planned the procedure {procedure.Title}.",
                 request.EngagementId), ct);
 
             return Result<Guid>.Success(procedure.Id);
@@ -115,7 +115,7 @@ namespace Ledgance.Audit.Engagement.Application.Fieldwork {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "procedure.updated",
                 "Procedure", procedure.Id,
-                $"Procedure '{procedure.Title}' is now {procedure.Status}.",
+                $"marked the procedure {procedure.Title} as {procedure.Status}.",
                 request.EngagementId), ct);
 
             return Result<string>.Success(procedure.Status.ToString());

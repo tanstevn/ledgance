@@ -245,10 +245,29 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
         [Column("description")]
         public string Description { get; set; } = string.Empty;
 
+        [Column("category")]
+        public string Category { get; set; } = string.Empty;
+
+        [Column("tags")]
+        public List<string> Tags { get; set; } = [];
+
+        [Column("version_history")]
+        public List<EvidenceVersionDoc> VersionHistory { get; set; } = [];
+
         [Column("uploaded_by")]
         public Guid UploadedBy { get; set; }
 
         [Column("uploaded_at")]
+        public DateTime UploadedAt { get; set; }
+    }
+
+    public class EvidenceVersionDoc {
+        public int Version { get; set; }
+        public string StoragePath { get; set; } = string.Empty;
+        public long SizeBytes { get; set; }
+        public string ContentType { get; set; } = string.Empty;
+        public string Note { get; set; } = string.Empty;
+        public Guid UploadedBy { get; set; }
         public DateTime UploadedAt { get; set; }
     }
 

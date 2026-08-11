@@ -75,7 +75,7 @@ namespace Ledgance.Audit.AI.Application.Assistant {
             if (request.EngagementId is not null) {
                 await _activity.RecordAsync(new ActivityEntry("Audit", "ai.assistant",
                     "Engagement", request.EngagementId.Value,
-                    "The AI assistant answered an engagement question.",
+                    "asked the AI assistant about this engagement.",
                     request.EngagementId), ct);
             }
 
@@ -163,7 +163,7 @@ namespace Ledgance.Audit.AI.Application.Assistant {
                 "Summarize the attached document.", context), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.document_summary",
-                subjectType, subjectId, "An AI summary was generated.",
+                subjectType, subjectId, "generated an AI summary.",
                 request.EngagementId), ct);
 
             return Result<AiProposalResult>.Success(

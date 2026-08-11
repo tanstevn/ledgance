@@ -21,13 +21,13 @@ import {
   planFeatures,
   planPresentation,
   platformOf,
+  priceLabel,
   usePlans,
 } from "@/lib/plans";
 
 /**
- * The Stripe seam: this page summarizes the chosen plan and hands off to checkout. The
- * checkout endpoint arrives with the Stripe integration; until the API answers, the
- * attempt surfaces as a graceful error and the Free plan remains fully usable.
+ * Summarizes the chosen plan and hands off to Stripe Checkout. A plan the server has no
+ * price for is never offered, and any refusal leaves the Free plan fully usable.
  */
 export function SubscribeView({ planCode }: { planCode: string }) {
   const router = useRouter();
@@ -60,7 +60,9 @@ export function SubscribeView({ planCode }: { planCode: string }) {
   const plan = plans?.find((row) => row.code === planCode);
   const presentation = planPresentation[planCode];
   const platform = platformOf(planCode);
-  const hasDefinedPrice = !!presentation?.price.period;
+
+  // Only the server knows whether a plan has a live price; never offer checkout without one.
+  const canCheckout = plan?.purchasable ?? false;
 
   if (authLoading || plansLoading) {
     return (
@@ -115,11 +117,11 @@ export function SubscribeView({ planCode }: { planCode: string }) {
           </h2>
           <div className="flex items-baseline gap-1">
             <span className="font-display text-2xl font-bold">
-              {presentation.price.label}
+              {priceLabel(plan).label}
             </span>
-            {presentation.price.period && (
+            {priceLabel(plan).period && (
               <span className="text-sm text-muted-foreground">
-                {presentation.price.period}
+                {priceLabel(plan).period}
               </span>
             )}
           </div>
@@ -142,13 +144,12 @@ export function SubscribeView({ planCode }: { planCode: string }) {
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
             <div>
-              <p className="text-sm font-medium">
-                Online checkout is not available yet
-              </p>
+              <p className="text-sm font-medium">Checkout could not be started</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Payments are launching shortly. Your account is ready on the
-                Free plan in the meantime — everything you set up carries over
-                when you upgrade.
+                {checkout.error?.join(" ") ??
+                  "Something went wrong preparing the payment session."}{" "}
+                Your account stays on the Free plan — everything you set up
+                carries over when you upgrade.
               </p>
             </div>
           </div>
@@ -156,7 +157,13 @@ export function SubscribeView({ planCode }: { planCode: string }) {
       )}
 
       <div className="mt-6 space-y-3">
-        {hasDefinedPrice ? (
+        {plan?.requiresContactSales ? (
+          <Button className="h-11 w-full font-semibold" asChild>
+            <a href="mailto:sales@ledgance.com?subject=Enterprise%20plan">
+              Contact sales
+            </a>
+          </Button>
+        ) : canCheckout ? (
           <Button
             className="h-11 w-full font-semibold"
             onClick={() => checkout.mutate({ planCode })}
@@ -176,7 +183,7 @@ export function SubscribeView({ planCode }: { planCode: string }) {
           </Button>
         ) : (
           <div className="rounded-xl border border-border/60 bg-muted/30 p-4 text-center text-sm text-muted-foreground">
-            Pricing for the {presentation.name} plan is announced at launch.
+            The {presentation.name} plan is not open for online purchase yet.
             Start on the Free plan today — you can upgrade the moment it opens.
           </div>
         )}

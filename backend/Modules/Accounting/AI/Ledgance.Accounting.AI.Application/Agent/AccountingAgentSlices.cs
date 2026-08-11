@@ -149,7 +149,7 @@ namespace Ledgance.Accounting.AI.Application.Agent {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "ai.agent",
                 "Entity", request.EntityId,
-                $"An AI agent investigation ran ({run.Steps.Count} tool steps): {Trim(request.Goal)}",
+                $"ran an AI agent investigation over {run.Steps.Count} tool steps: {Trim(request.Goal)}",
                 request.EntityId), ct);
 
             return Result<AgentRunReport>.Success(

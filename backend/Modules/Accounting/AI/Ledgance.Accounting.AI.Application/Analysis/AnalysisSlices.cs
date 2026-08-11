@@ -189,7 +189,7 @@ namespace Ledgance.Accounting.AI.Application.Analysis {
                 "clearly separate what the data shows from what would need more context.",
                 $"Analyze the entity's financials as of '{period.Name}'.", context,
                 "ai.financial_analysis", "FiscalPeriod", period.Id,
-                $"An AI financial analysis as of '{period.Name}' was generated.", ct);
+                $"generated an AI financial analysis as of {period.Name}.", ct);
         }
     }
 
@@ -276,7 +276,7 @@ namespace Ledgance.Accounting.AI.Application.Analysis {
                 "checklist. Be explicit about what looks ready.",
                 $"Prepare the close review for '{period.Name}'.", context,
                 "ai.close_assistance", "FiscalPeriod", period.Id,
-                $"An AI close review for '{period.Name}' was generated.", ct);
+                $"generated an AI close review for {period.Name}.", ct);
         }
     }
 }

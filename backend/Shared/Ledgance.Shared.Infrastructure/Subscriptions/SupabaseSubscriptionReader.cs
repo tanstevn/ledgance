@@ -29,7 +29,7 @@ namespace Ledgance.Shared.Infrastructure.Subscriptions {
                 module,
                 Parse(subscription.Plan, PlanCode.Free),
                 Parse(subscription.Status, SubscriptionStatus.Canceled),
-                subscription.EntitlementOverrides ?? new Dictionary<string, string>());
+                subscription.EntitlementOverrides);
         }
 
         private static TEnum Parse<TEnum>(string value, TEnum fallback)

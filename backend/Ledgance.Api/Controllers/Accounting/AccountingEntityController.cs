@@ -23,6 +23,11 @@ namespace Ledgance.Api.Controllers.Accounting {
         public async Task<Result<IEnumerable<EntityRow>>> List(CancellationToken ct)
             => await _mediator.SendAsync(new GetEntitiesQuery(), ct);
 
+        [HttpGet("paged")]
+        public async Task<PaginatedResult<PaginatedEntityRow>> ListPaged(
+            [FromQuery] GetPaginatedEntitiesQuery query, CancellationToken ct)
+            => await _mediator.SendAsync(query, ct);
+
         [HttpGet("{id:guid}")]
         public async Task<Result<EntityRow>> Get(Guid id, CancellationToken ct)
             => await _mediator.SendAsync(new GetEntityQuery { EntityId = id }, ct);

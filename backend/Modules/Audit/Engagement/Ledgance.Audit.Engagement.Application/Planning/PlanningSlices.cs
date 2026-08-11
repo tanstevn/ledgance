@@ -55,7 +55,7 @@ namespace Ledgance.Audit.Engagement.Application.Planning {
             await _engagements.UpdateAsync(engagement, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "plan.saved",
-                "Engagement", engagement.Id, "The audit plan was updated.",
+                "Engagement", engagement.Id, $"updated the audit plan for {engagement.Name}.",
                 engagement.Id), ct);
 
             return Result<bool>.Success(true);
@@ -108,7 +108,7 @@ namespace Ledgance.Audit.Engagement.Application.Planning {
             await _engagements.UpdateAsync(engagement, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "plan.approved",
-                "Engagement", engagement.Id, "The audit plan was approved.",
+                "Engagement", engagement.Id, $"approved the audit plan for {engagement.Name}.",
                 engagement.Id), ct);
 
             return Result<bool>.Success(true);
@@ -163,7 +163,7 @@ namespace Ledgance.Audit.Engagement.Application.Planning {
             await _engagements.UpdateAsync(engagement, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "materiality.set",
-                "Engagement", engagement.Id, "Materiality was determined.",
+                "Engagement", engagement.Id, $"set materiality for {engagement.Name}.",
                 engagement.Id), ct);
 
             return Result<bool>.Success(true);

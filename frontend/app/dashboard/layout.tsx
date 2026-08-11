@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-context";
 import { DashboardLayout } from "@/components/dashboard-layout";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 import { Loader2 } from "lucide-react";
 
 export default function DashboardRootLayout({
@@ -28,5 +29,10 @@ export default function DashboardRootLayout({
     );
   }
 
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout>
+      <UpgradePrompt />
+      {children}
+    </DashboardLayout>
+  );
 }

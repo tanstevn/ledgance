@@ -94,7 +94,7 @@ AI is a first-class part of both products, not a bolt-on. Scope and provider rou
   acceptance is recorded in the activity trail.
 - AI availability, usage allowance, model tier, and context size are entitlement-driven.
 
-## 7. Payments
+## 7. Payments **[implemented — Phase 9; no live-account run yet]**
 
 Stripe only — no custom payment processing. Customers, products, prices, checkout,
 subscription lifecycle (upgrade/downgrade/cancel), payment status, webhooks, and entitlement

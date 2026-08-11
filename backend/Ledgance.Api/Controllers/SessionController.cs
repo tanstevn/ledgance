@@ -41,17 +41,26 @@ namespace Ledgance.Api.Controllers {
                     [], [], [], NeedsOnboarding: true));
             }
 
-            var plans = new List<SessionModulePlan>();
+            // The per-module entitlements and the organization read are independent; resolving
+            // them together keeps this endpoint — which every dashboard page waits on — at the
+            // cost of one round trip instead of three.
+            var entitlementTasks = Enum.GetValues<ProductModule>()
+                .Select(module => _entitlements.GetAsync(user.OrganizationId, module, ct))
+                .ToList();
 
-            foreach (var module in Enum.GetValues<ProductModule>()) {
-                var entitlements = await _entitlements.GetAsync(user.OrganizationId, module, ct);
+            var organizationTask = _organizations.GetOrganizationAsync(user.OrganizationId, ct);
 
-                plans.Add(new SessionModulePlan(module.ToString(), entitlements.Plan.ToString(),
-                    SubscriptionPlanCatalog.RequiresContactSales(entitlements.Plan)));
-            }
+            List<Task> pending = [.. entitlementTasks, organizationTask];
+            await Task.WhenAll(pending);
 
-            var organization = await _organizations.GetOrganizationAsync(
-                user.OrganizationId, ct);
+            var plans = entitlementTasks
+                .Select(task => task.Result)
+                .Select(entitlements => new SessionModulePlan(
+                    entitlements.Module.ToString(), entitlements.Plan.ToString(),
+                    SubscriptionPlanCatalog.RequiresContactSales(entitlements.Plan)))
+                .ToList();
+
+            var organization = organizationTask.Result;
 
             // A product is enabled by the signup choice or by a paid subscription for its
             // module — a customer who pays for a platform always sees it.

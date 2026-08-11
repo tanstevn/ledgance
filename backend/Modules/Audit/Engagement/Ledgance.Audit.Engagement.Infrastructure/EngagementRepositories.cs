@@ -30,6 +30,42 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
             return rows.Models.Select(ToDomain).ToList();
         }
 
+        public async Task<EngagementPage> ListPageAsync(Guid? clientId, EngagementStatus? status,
+            string? search, int page, int pageSize, CancellationToken ct) {
+            var query = _repository.Query();
+            var countQuery = _repository.Query();
+
+            if (clientId is not null) {
+                query = query.Filter("client_id", Constants.Operator.Equals,
+                    clientId.Value.ToString());
+                countQuery = countQuery.Filter("client_id", Constants.Operator.Equals,
+                    clientId.Value.ToString());
+            }
+
+            if (status is not null) {
+                query = query.Filter("status", Constants.Operator.Equals, status.Value.ToString());
+                countQuery = countQuery.Filter("status", Constants.Operator.Equals,
+                    status.Value.ToString());
+            }
+
+            if (!string.IsNullOrWhiteSpace(search)) {
+                var pattern = $"%{search.Trim()}%";
+                query = query.Filter("name", Constants.Operator.ILike, pattern);
+                countQuery = countQuery.Filter("name", Constants.Operator.ILike, pattern);
+            }
+
+            var from = (page - 1) * pageSize;
+
+            var rows = await query
+                .Order("created_at", Constants.Ordering.Descending)
+                .Range(from, from + pageSize - 1)
+                .Get(ct);
+
+            var total = await countQuery.Count(Constants.CountType.Exact, ct);
+
+            return new EngagementPage(rows.Models.Select(ToDomain).ToList(), total);
+        }
+
         public async Task<long> CountActiveAsync(CancellationToken ct) =>
             await _repository.Query()
                 .Filter("status", Constants.Operator.NotEqual,
@@ -176,11 +212,21 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
         }
 
         public async Task<EngagementProgress> GetAsync(Guid engagementId, CancellationToken ct) {
-            var procedures = await _procedures.ListAsync(engagementId, ct);
-            var papers = await _papers.ListAsync(engagementId, ct);
-            var findings = await _findings.ListAsync(engagementId, ct);
-            var risks = await _risks.ListAsync(engagementId, ct);
-            var report = await _reports.FindByEngagementAsync(engagementId, ct);
+            // Five independent tables; fetched together this snapshot costs one round trip of
+            // latency instead of five.
+            var proceduresTask = _procedures.ListAsync(engagementId, ct);
+            var papersTask = _papers.ListAsync(engagementId, ct);
+            var findingsTask = _findings.ListAsync(engagementId, ct);
+            var risksTask = _risks.ListAsync(engagementId, ct);
+            var reportTask = _reports.FindByEngagementAsync(engagementId, ct);
+
+            await Task.WhenAll(proceduresTask, papersTask, findingsTask, risksTask, reportTask);
+
+            var procedures = proceduresTask.Result;
+            var papers = papersTask.Result;
+            var findings = findingsTask.Result;
+            var risks = risksTask.Result;
+            var report = reportTask.Result;
 
             var respondedRiskIds = procedures
                 .SelectMany(procedure => procedure.RiskIds)

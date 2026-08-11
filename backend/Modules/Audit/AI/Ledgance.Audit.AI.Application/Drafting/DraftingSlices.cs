@@ -76,7 +76,7 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 context), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.risk_suggestions",
-                "Engagement", request.EngagementId, "AI risk suggestions were generated.",
+                "Engagement", request.EngagementId, "generated AI risk suggestions.",
                 request.EngagementId), ct);
 
             return Result<AiProposalResult>.Success(
@@ -144,7 +144,7 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 "Suggest audit procedures for this engagement.", context), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.procedure_suggestions",
-                "Engagement", request.EngagementId, "AI procedure suggestions were generated.",
+                "Engagement", request.EngagementId, "generated AI procedure suggestions.",
                 request.EngagementId), ct);
 
             return Result<AiProposalResult>.Success(
@@ -215,7 +215,7 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 $"Draft a working paper on: {request.Topic}", context), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.working_paper_draft",
-                "Engagement", request.EngagementId, "An AI working-paper draft was generated.",
+                "Engagement", request.EngagementId, "generated an AI working-paper draft.",
                 request.EngagementId), ct);
 
             return Result<AiProposalResult>.Success(
@@ -270,7 +270,7 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 $"Draft a finding from this observation: {request.Observation}", context), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.finding_draft",
-                "Engagement", request.EngagementId, "An AI finding draft was generated.",
+                "Engagement", request.EngagementId, "generated an AI finding draft.",
                 request.EngagementId), ct);
 
             return Result<AiProposalResult>.Success(

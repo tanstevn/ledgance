@@ -7,6 +7,13 @@ export interface SubscriptionPlanRow {
   module: "Audit" | "Accounting";
   isFree: boolean;
   requiresContactSales: boolean;
+  /** Server-declared: a paid plan with a price configured on the payment provider. */
+  purchasable: boolean;
+  /** The live price Stripe will charge, in the currency's smallest unit. */
+  amountMinorUnits: number | null;
+  currency: string | null;
+  interval: string | null;
+  intervalCount: number | null;
   entitlements: Record<string, string>;
 }
 
@@ -17,15 +24,53 @@ export const usePlans = () =>
   });
 
 /**
- * Presentation metadata keyed by backend plan code. Prices follow the product
- * documentation: Accounting Solo is the only plan with defined pricing; Enterprise is
- * Contact Sales; the rest are announced at launch. Never invent prices here.
+ * Presentation metadata keyed by backend plan code — name and positioning only. The price a
+ * customer sees comes from `priceLabel`, which reads the live provider price; the `price`
+ * field here is the fallback used only when the provider has no price for the plan yet.
+ * Never invent prices here.
  */
 export interface PlanPresentation {
   name: string;
   tagline: string;
   price: { label: string; period?: string };
   highlighted?: boolean;
+}
+
+export interface PriceLabel {
+  label: string;
+  period?: string;
+}
+
+/**
+ * What a plan costs, preferring what the payment provider will actually charge over any
+ * value written into this file. A plan the provider has no price for reads as unannounced
+ * rather than as a guess.
+ */
+export function priceLabel(plan: SubscriptionPlanRow): PriceLabel {
+  const fallback = planPresentation[plan.code]?.price ?? {
+    label: "Pricing at launch",
+  };
+
+  if (plan.isFree || plan.requiresContactSales) {
+    return fallback;
+  }
+
+  if (plan.amountMinorUnits === null || !plan.currency) {
+    return fallback.period ? fallback : { label: "Pricing at launch" };
+  }
+
+  const amount = plan.amountMinorUnits / 100;
+  const label = new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: plan.currency,
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  }).format(amount);
+
+  const count = plan.intervalCount ?? 1;
+  const unit = plan.interval ?? "month";
+  const period = count > 1 ? `/${count} ${unit}s` : `/${unit}`;
+
+  return { label, period };
 }
 
 export const planPresentation: Record<string, PlanPresentation> = {

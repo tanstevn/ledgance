@@ -1,8 +1,8 @@
 # Ledgance — Architecture
 
 This document states how the system is designed and the rules that govern it. It is **not** a
-statement of what is built — see `project-state.md` for that. Sections describing Audit,
-Accounting and cross-context integration are binding design rules for work that has not started.
+statement of what is built — see `project-state.md` for that. The rules here are binding
+whether or not a given area has been implemented yet.
 
 ## 1. Shape of the system
 
@@ -24,11 +24,13 @@ its own repository, deployment, and domain (`api.ledgance-audit.com`,
 │   ├── Modules/
 │   │   ├── Audit/<Feature>/     # Application / Domain / Infrastructure
 │   │   └── Accounting/<Feature>/
+│   ├── Integration/             # the only assemblies that may see both contexts (ADR-021)
 │   ├── Shared/
 │   │   ├── Ledgance.Shared.Application      # Mediator abstractions, Result, paging
 │   │   └── Ledgance.Shared.Infrastructure   # Mediator implementation + DI
 │   └── _Tests/
 ├── frontend/                     # Next.js App Router
+├── supabase/migrations/          # schema + row-level security
 └── docs/
 ```
 
@@ -46,12 +48,17 @@ its own repository, deployment, and domain (`api.ledgance-audit.com`,
 For a module feature `Modules/<Context>/<Feature>/`:
 
 ```
-Ledgance.<Context>.<Feature>.Application      → Shared.Application, own Domain
-Ledgance.<Context>.<Feature>.Domain           → nothing
-Ledgance.<Context>.<Feature>.Infrastructure   → own Application, own Domain, Shared.Infrastructure
+Ledgance.<Context>.<Feature>.Application      → Shared.Application, own Domain,
+                                                sibling <Feature>.Application in the same context
+Ledgance.<Context>.<Feature>.Domain           → Shared.Application (shared kernel only — ADR-014)
+Ledgance.<Context>.<Feature>.Infrastructure   → own Application, own Domain, Shared.Infrastructure,
+                                                sibling <Feature>.Application in the same context
 ```
 
-- **Domain** — entities, value objects, invariants, domain services. No Supabase, no HTTP, no DI container types.
+- **Domain** — entities, value objects, invariants, domain services. No Supabase, no HTTP, no DI
+  container types. It references `Shared.Application` **only** for shared-kernel primitives such as
+  `DomainRuleException` (ADR-014); any other use of a Shared type in a Domain project is a violation.
+  The `*.Domain` projects for the placeholder module slices are empty by design.
 - **Application** — commands, queries, handlers, validators, port interfaces (`I...Repository`, `I...Reader`). Depends on `Ledgance.Shared.Application` for the Mediator abstractions and `Result<T>`.
 - **Infrastructure** — Supabase clients, external API adapters, port implementations. **Create only when a feature genuinely needs it.**
 
@@ -87,7 +94,7 @@ The project has its **own** Mediator. MediatR is not used and must not be added.
 | `IPipelineBehavior<TRequest,TResponse>` | Cross-cutting wrapper; `HandleAsync(request, next, ct)`. |
 | `IMediator` | `Task<TResponse> SendAsync<TResponse>(IRequest<TResponse>, CancellationToken)`. |
 | `IExecutor` | Internal bridge that lets `Mediator` resolve a closed generic handler from an open request. |
-| `[PipelineOrder(short)]` | **Required** on every pipeline behavior. Higher order runs first (outermost). |
+| `[PipelineOrder(short)]` | Expected on every pipeline behavior. **Lower** order runs further out; an unattributed behavior sorts as `short.MaxValue` and runs innermost. |
 
 `Ledgance.Shared.Infrastructure/Mediator`:
 
@@ -115,7 +122,7 @@ Lower `[PipelineOrder]` runs further out, so the chain is:
 | Order | Behavior | Responsibility |
 | --- | --- | --- |
 | 0 | `LoggingBehavior` | Request name, organization id, duration, failure. Never payloads. |
-| 100 | `AuthorizationBehavior` | Default-deny. Requires an authenticated caller with an organization unless the request is `[AllowAnonymousRequest]`; enforces `[RequiresPermission]`. |
+| 100 | `AuthorizationBehavior` | Default-deny. Requires an authenticated caller with an organization unless the request is `[AllowAnonymousRequest]` (no principal needed) or `[AllowWithoutOrganization]` (principal but no membership — onboarding only); enforces `[RequiresPermission]`. |
 | 200 | `EntitlementBehavior` | Enforces `[RequiresEntitlement]` capability checks. |
 | 300 | `ValidationBehavior` | FluentValidation; throws `ValidationException` on failure. |
 
@@ -133,7 +140,9 @@ transport. `ExceptionHandlerMiddleware` converts thrown exceptions into the same
 | `FluentValidation.ValidationException` | 400 (per-error messages) |
 | `UnauthenticatedException` | 401 |
 | `ForbiddenException` | 403 |
+| `DomainRuleException` | 409 — the state does not allow the operation (ADR-014) |
 | `EntitlementException` | 402 — "upgrade required", distinguishable from 403 by the client |
+| `AiUnavailableException` | 503 — every eligible AI provider failed |
 | `InvalidOperationException` | 500 |
 | `OperationCanceledException` | 410 |
 | anything else | 500, logged, detail withheld from the response |
@@ -178,7 +187,8 @@ and `CurrentUserMiddleware` turns the verified principal into a `CurrentUser`:
 
 ```
 Bearer token → JwtBearer validation → ClaimsPrincipal
-             → CurrentUserMiddleware → organisation membership lookup
+             → CurrentUserMiddleware → AuthenticatedPrincipal { UserId, Email }
+                                     → organisation membership lookup
              → CurrentUser { UserId, Email, OrganizationId, Role, Permissions }
              → ICurrentUserAccessor (scoped, synchronous, resolved once per request)
 ```
@@ -186,14 +196,21 @@ Bearer token → JwtBearer validation → ClaimsPrincipal
 - Organisation membership comes from `organization_members`, never from a client-supplied
   value, so a caller cannot choose the organisation they operate in. A custom `org_id`/`org_role`
   access-token claim is used as a fast path when a Supabase Auth hook supplies it.
-- An authenticated user with no membership is rejected with `ForbiddenException`.
+- An authenticated user with **no** membership keeps only the `AuthenticatedPrincipal`; the
+  middleware does not reject them. `AuthorizationBehavior` requires full organisation context by
+  default, so onboarding — marked `[AllowWithoutOrganization]` — is the only thing such a user can
+  do (ADR-015).
 - `OrganizationRole` is `Viewer < Member < Manager < Admin < Owner`.
 - Permissions are strings (`"organization:members:manage"`, later `"audit:engagement:approve"`).
   `PermissionRegistry` is a startup-populated grant table; modules contribute their own
   permissions through the `modulePermissions` callback on `AddLedganceSharedInfrastructure`.
   No role-to-permission logic is duplicated in feature code.
-- The token is validated with the project's symmetric `JwtSecret` when configured, otherwise
-  against the project's published JWKS document.
+- The token is validated with the project's symmetric `JwtSecret` when one is configured
+  (HS256 projects). An **empty** `JwtSecret` selects the asymmetric path: signing keys are read
+  directly from the JWKS URL derived from `Supabase:Url`
+  (`{Url}/auth/v1/.well-known/jwks.json`) and cached for the process lifetime — Supabase Auth publishes
+  no OIDC discovery document, so `MetadataAddress` cannot be used. Rotating the project's signing
+  keys requires an API restart. Validation failures log the reason only, never token contents.
 
 ## 8. API host
 
@@ -207,24 +224,57 @@ Bearer token → JwtBearer validation → ClaimsPrincipal
   OpenAPI, Scalar, the `/` redirect and the 404 fallback opt out with `AllowAnonymous`.
 - CORS origins come from `Cors:AllowedOrigins`; there is no allow-any-origin policy.
 - OpenAPI + Scalar UI at `/scalar/v1` outside Production; `/` redirects there.
-- `GET /api/session` returns the server-resolved identity, organisation, role, permissions and
-  per-module plan. Clients render from it; they never authorize with it.
+- Enum values bind and render by name — `JsonStringEnumConverter` is registered globally, so
+  request bodies and response DTOs agree on `"FinancialStatement"` rather than an ordinal.
+- `GET /api/session` returns the server-resolved identity, organisation id and name, role,
+  permissions, per-module plan, the organisation's activated `Products`, and `needsOnboarding`
+  for a member-less caller. Clients render from it; they never authorize with it.
+
+## 8a. Billing
+
+Stripe is reached only through ports declared in `Shared.Application/Billing` —
+`IBillingGateway` (customers, checkout, portal, plan change, cancellation),
+`IBillingWebhookVerifier`, `IBillingPriceReader`, `IBillingPriceCatalog`, `ISubscriptionStore`
+and `IProcessedEventStore`. Stripe types exist only in `Shared.Infrastructure/Billing`, so the
+billing slices are testable against a fake provider and the provider is replaceable.
+
+```
+Checkout:  POST api/billing/checkout → ensure customer → persist it → session → redirect
+Truth:     POST api/billing/webhook  → verify signature → dedupe by event id
+                                     → ignore older events → upsert subscription
+Entitlement: subscription row → EntitlementService → every gated operation
+```
+
+- **Webhooks are the source of truth** (ADR-007). The success redirect displays state; it never
+  grants it. The webhook endpoint is the only anonymous product endpoint, authenticated by
+  payload signature and returning 400 when it does not verify.
+- Checkout metadata carries organization, module and plan onto the subscription, so later
+  events resolve their own scope without trusting the caller.
+- The plan a subscription grants is read from the **price** it bills, so a change made in
+  Stripe's own portal lands in the application too (ADR-023).
+- `ISubscriptionStore` is the one place that bypasses `SupabaseRepository`: the webhook path has
+  no user and therefore no organization context, so it filters explicitly on ids the
+  application resolved itself.
 
 ## 9. Frontend
 
 Next.js App Router + React + TypeScript + Tailwind + shadcn/ui.
 
-- `app/` — routes. Marketing site at `/`, auth at `/login` and `/signup`, product under `/dashboard`.
+- `app/` — routes. Marketing site at `/`, `/accounting`, `/audit`, `/pricing`; auth at `/login`
+  and `/signup`; onboarding and subscription at `/onboarding`, `/subscribe`; product under
+  `/dashboard` (per-platform sections, per-engagement and per-entity workspaces, AI pages, billing).
 - `components/ui/` — the shadcn/ui primitive set. **Reuse and extend these; do not introduce a second UI kit.**
-- `components/` — composed app components (`dashboard-layout`, `marketing-header`, contexts).
-- `lib/types.ts` — frontend view models; `lib/utils.ts` — `cn()`.
-- `lib/supabase.ts` — the browser Supabase client (anon key only).
+- `components/` — composed app components (`dashboard-layout`, `workspace`, `marketing-header`,
+  `pricing-plans`, `cross-sell`, `ai/`, `auth/`, contexts).
+- `lib/audit-types.ts`, `lib/accounting-types.ts` — frontend view models per product;
+  `lib/plans.ts` — plan presentation derived from the API's catalogue; `lib/utils.ts` — `cn()`.
+- `lib/supabase.ts` — the browser Supabase client (publishable/anon key only).
 - `components/auth-context.tsx` — Supabase Auth session: sign in, sign up, sign out,
-  password reset, and the current access token.
+  password reset, OAuth sign-in (`signInWithOAuth`), and the current access token.
 - `types/`, `util/http.ts`, `hooks/query.ts` — the typed API layer mirroring the backend
   `Result<T>` / `PaginatedResult<T>` envelope, over TanStack Query. `util/http.ts` attaches the
   Supabase access token as a bearer header and surfaces the API's `errors` array on failure.
-- `hooks/session.ts` — `useSession()` over `GET /api/session`.
+- `hooks/session.ts` — `useSession()` over `GET /api/session`; `hooks/use-toast.ts` — notifications.
 - Providers are composed in `app/layout.tsx`: `ThemeProvider` (next-themes) → `QueryProvider`
   → `AuthProvider`.
 - Design tokens are HSL CSS variables in `app/globals.css`, consumed through
@@ -237,10 +287,16 @@ Audit must work with **or without** Ledgance Accounting.
 
 - Audit never references an Accounting Domain or Application assembly.
 - Shared accounting context (trial balance, GL, balances, statements, periods) reaches Audit
-  through an explicit integration contract owned by a dedicated integration slice —
+  through an explicit integration contract owned by a dedicated integration assembly —
   a read-only, permissioned projection, never direct entity access.
 - Audit models an *accounting context source* abstraction with at least two implementations:
   external import (CSV/Excel/trial balance/GL) and Ledgance Accounting.
+
+Realised in `backend/Integration/Ledgance.Integration.AccountingContext`
+(`LinkedAccountingSourceAdapter`), the only assembly referencing both contexts and referenced
+only by the host — ADR-021. Today the shared projection covers entities, periods and the trial
+balance; widening it is a change to the published contract and the Audit-owned port, never a
+cross-context reference.
 
 See `module-boundaries.md` for the enforceable rules.
 

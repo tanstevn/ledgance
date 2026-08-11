@@ -79,7 +79,7 @@ namespace Ledgance.Accounting.Ledger.Application.Documents {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "document.uploaded",
                 "Document", document.Id,
-                $"Document '{document.FileName}' was uploaded.", request.EntityId), ct);
+                $"uploaded the document {document.FileName}.", request.EntityId), ct);
 
             return Result<Guid>.Success(document.Id);
         }

@@ -9,6 +9,7 @@ import {
   planFeatures,
   planPresentation,
   plansForPlatform,
+  priceLabel,
   usePlans,
   type Platform,
   type SubscriptionPlanRow,
@@ -23,6 +24,8 @@ function PlanCard({
 }) {
   const presentation = planPresentation[plan.code];
   if (!presentation) return null;
+
+  const price = priceLabel(plan);
 
   const signupHref = plan.isFree
     ? `/signup?platform=${platform}`
@@ -48,15 +51,13 @@ function PlanCard({
       <div className="mt-6 flex items-baseline gap-1">
         <span
           className={`font-display font-bold ${
-            presentation.price.period ? "text-4xl" : "text-2xl"
+            price.period ? "text-4xl" : "text-2xl"
           }`}
         >
-          {presentation.price.label}
+          {price.label}
         </span>
-        {presentation.price.period && (
-          <span className="text-sm text-muted-foreground">
-            {presentation.price.period}
-          </span>
+        {price.period && (
+          <span className="text-sm text-muted-foreground">{price.period}</span>
         )}
       </div>
       <ul className="mt-6 space-y-3">

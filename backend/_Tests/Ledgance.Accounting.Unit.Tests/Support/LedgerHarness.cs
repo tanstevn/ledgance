@@ -37,6 +37,8 @@ namespace Ledgance.Accounting.Unit.Tests.Support {
                 .WithHandler<ArchiveEntityCommand, Result<bool>, ArchiveEntityCommandHandler>()
                 .WithHandler<GetEntitiesQuery, Result<IEnumerable<EntityRow>>,
                     GetEntitiesQueryHandler>()
+                .WithHandler<GetPaginatedEntitiesQuery, PaginatedResult<PaginatedEntityRow>,
+                    GetPaginatedEntitiesQueryHandler>()
                 .WithHandler<CreateAccountCommand, Result<Guid>, CreateAccountCommandHandler>()
                 .WithHandler<UpdateAccountCommand, Result<bool>, UpdateAccountCommandHandler>()
                 .WithHandler<SetAccountActiveCommand, Result<bool>,

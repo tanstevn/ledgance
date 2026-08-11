@@ -49,7 +49,7 @@ namespace Ledgance.Audit.Client.Application.Commands {
             await _clients.UpdateAsync(client, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "client.updated",
-                "Client", client.Id, $"Client '{client.Name}' was updated."), ct);
+                "Client", client.Id, $"updated the client {client.Name}."), ct);
 
             return Result<bool>.Success(true);
         }

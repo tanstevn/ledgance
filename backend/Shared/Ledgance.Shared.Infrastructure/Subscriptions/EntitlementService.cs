@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Ledgance.Shared.Application.Subscriptions;
 using Microsoft.Extensions.Options;
 
@@ -12,7 +13,9 @@ namespace Ledgance.Shared.Infrastructure.Subscriptions {
     }
 
     public sealed class EntitlementService : IEntitlementService {
-        private readonly Dictionary<(Guid, ProductModule), EntitlementSet> _resolved = [];
+        // Concurrent because callers resolve both product modules in parallel within one
+        // request scope; a duplicate resolution of the same key is idempotent and harmless.
+        private readonly ConcurrentDictionary<(Guid, ProductModule), EntitlementSet> _resolved = new();
         private readonly ISubscriptionReader _subscriptions;
         private readonly SubscriptionSettings _settings;
 

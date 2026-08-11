@@ -4,6 +4,103 @@ Newest first. Each entry: decision, why, consequence.
 
 ---
 
+## ADR-026 — Organization context may travel in the access token, at a bounded staleness cost
+
+**Decision.** `CurrentUserMiddleware` prefers `org_id`/`org_role` claims on the verified access
+token and falls back to the `organization_members` lookup when they are absent. Migration
+`0009` supplies `custom_access_token_hook`, which Supabase Auth can be configured to run when
+minting a token; enabling it is an operational choice, and the application is correct either
+way. The hook uses the same selection rule as the fallback reader, so the two can never
+disagree about which membership wins.
+
+**Why.** Every Supabase query is a network round trip (~100–300ms measured), and the membership
+lookup ran on *every* authenticated request — the single largest fixed cost in the API. Claims
+remove it entirely.
+
+**Consequence.** With the hook enabled, a role change or membership removal takes effect at the
+next token refresh (≤1 hour) rather than immediately. This is a **deliberate, bounded** trade:
+the organization *id* still gates every query through `SupabaseRepository` and row-level
+security, so a stale claim can widen what a user may *do* within their own organization for up
+to an hour, never *which* organization's data they can reach. Phase 10 should decide whether
+that window is acceptable for role demotions, or whether sensitive permissions need a
+freshness check.
+
+---
+
+## ADR-025 — Evidence versions are retained, never overwritten
+
+**Decision.** Superseding a document pushes the outgoing version — storage path, size, content
+type, note, uploader, timestamp — into the aggregate's version history rather than replacing
+the row's file pointer (migration `0010`). Every version stays independently downloadable via
+`download-url?version=N`. Re-uploading a file name that already exists on an engagement
+versions that document instead of creating a lookalike beside it. Evidence also carries a
+category and normalized tags.
+
+**Why.** An auditor must be able to show what a working paper referenced *at the time*, not
+only the latest file. The previous implementation claimed versioning — it incremented a version
+number — while destroying the evidence of every earlier version, which is worse than not
+claiming it.
+
+**Consequence.** Evidence rows carry their history as jsonb, so the history is fetched with the
+document and needs no extra query. Rows created before this change start their history at their
+current version; earlier supersede counts cannot be reconstructed because they were never
+recorded. Accounting documents deliberately do **not** version — they are source attachments,
+not audit evidence.
+
+---
+
+## ADR-024 — Activity summaries are active-voice predicates
+
+**Decision.** A handler records what someone did as a predicate beginning with a lowercase verb
+— `"approved the audit plan for FY2026 Financial Statement Audit."` — never a standalone
+sentence. Every reader composes the sentence by prefixing the actor: `activitySentence()`
+renders "You approved the audit plan for …" or "Sarah Whitman approved …".
+
+**Why.** The trail previously stored passive sentences ("The audit plan was approved."), which
+the feed prefixed with an actor, producing "You The audit plan was approved." Fixing it in the
+UI would have meant parsing English; fixing it at the source makes the record read correctly
+everywhere, including raw rows and any future export.
+
+**Consequence.** All 71 call sites were rewritten, and two workflow tests assert the predicate
+form so a new handler cannot quietly reintroduce a sentence. The trail is append-only, so rows
+written before 2026-08-11 keep the old phrasing and read oddly after an actor name; they are
+left as recorded rather than rewritten.
+
+---
+
+## ADR-023 — Billing is a port; the provider's price is the plan; webhooks carry their own scope
+
+**Decision.** Phase 9 puts Stripe behind `IBillingGateway`, `IBillingPriceCatalog`,
+`IBillingWebhookVerifier`, `ISubscriptionStore` and `IProcessedEventStore` in
+`Shared.Application/Billing`; `Stripe` types appear only in `Shared.Infrastructure/Billing`.
+Plan-to-price mapping is configuration (`Stripe:Prices:<PlanCode>`), so a plan with no
+configured price is simply not purchasable — the catalog reports it, the UI does not offer it,
+and the handler refuses it. Free is never bought and Enterprise never reaches checkout: both are
+refused with a reason. **Which plan an organization is on is read from the price the provider
+bills**, falling back to the checkout metadata (`organization_id`, `module`, `plan_code`) that
+travels onto the subscription, then to the stored plan. Webhook handling verifies the signature
+before reading anything, records the provider event id in `billing_events` for idempotency, and
+discards any event older than the row's `last_event_at`. `SupabaseSubscriptionStore`
+deliberately bypasses `SupabaseRepository`: a webhook has no user and therefore no organization
+context, so tenancy comes from an organization id the application resolved itself — signed
+metadata, or the stored subscription/customer identifier — and never from request input.
+
+**Why.** ADR-007 already made webhooks the source of truth; this decides *how* an event is
+trusted and matched. Signature-then-metadata means a forged payload cannot point at another
+organization, and the event id plus timestamp make retries and out-of-order delivery
+non-events. Treating the billed price as the authority keeps a plan change made in Stripe's own
+portal in sync without a second code path. Keeping prices in configuration means repricing or
+opening a new plan is a settings change, and a half-configured environment degrades to "not
+purchasable" instead of selling at a wrong price.
+
+**Consequence.** Adding a plan to sale = create the price in Stripe, add one configuration
+entry. Replacing the provider = one Infrastructure folder. The webhook path is the only code
+allowed to write subscription rows without a user context, and it is the only place that
+justifies bypassing the tenant-scoped repository. Entitlements need no billing awareness: they
+still resolve from `organization_subscriptions`, which is what billing writes.
+
+---
+
 ## ADR-022 — Agent tools are whitelisted mediator requests run as the calling user
 
 **Decision.** The agentic layer (Phase 7) gives an AI agent exactly one way to touch the
@@ -394,8 +491,8 @@ stack duplicates the model and fights Supabase's row-level security and auth int
 implements them. Persistence models are mapped to domain entities at the boundary. Row-level
 security policies are part of the schema deliverable, not an afterthought.
 
-*Note:* the untracked-by-any-project file `backend/Class1.cs` is a leftover EF Core test-base
-template. It compiles into nothing and must not be revived as-is.
+*Note:* `backend/Class1.cs`, a leftover EF Core test-base template that belonged to no project,
+has since been deleted. Nothing in the tree references EF Core.
 
 ---
 

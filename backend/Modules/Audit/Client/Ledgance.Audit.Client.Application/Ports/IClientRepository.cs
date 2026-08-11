@@ -12,11 +12,20 @@ namespace Ledgance.Audit.Client.Application.Ports {
         Task UpdateAsync(AuditClient client, CancellationToken ct);
     }
 
+    public sealed record ClientEngagementCounts(int Active, int Total);
+
     /// <summary>
     /// Owned by the Client feature so archiving can refuse clients that still have active
     /// engagements without referencing the Engagement feature's internals.
     /// </summary>
     public interface IClientEngagementCounter {
         Task<int> CountActiveEngagementsAsync(Guid clientId, CancellationToken ct);
+
+        /// <summary>
+        /// Counts for a whole page of clients in one call — a per-client round trip would make
+        /// the client list quadratic in page size.
+        /// </summary>
+        Task<IReadOnlyDictionary<Guid, ClientEngagementCounts>> CountForClientsAsync(
+            IEnumerable<Guid> clientIds, CancellationToken ct);
     }
 }

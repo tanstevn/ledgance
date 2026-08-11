@@ -53,7 +53,7 @@ namespace Ledgance.Accounting.Ledger.Application.Entities {
             await _entities.AddAsync(entity, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "entity.created",
-                "Entity", entity.Id, $"Entity '{entity.Name}' was created.", entity.Id), ct);
+                "Entity", entity.Id, $"created the entity {entity.Name}.", entity.Id), ct);
 
             return Result<Guid>.Success(entity.Id);
         }
@@ -94,7 +94,7 @@ namespace Ledgance.Accounting.Ledger.Application.Entities {
             await _entities.UpdateAsync(entity, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "entity.updated",
-                "Entity", entity.Id, $"Entity '{entity.Name}' was updated.", entity.Id), ct);
+                "Entity", entity.Id, $"updated the entity {entity.Name}.", entity.Id), ct);
 
             return Result<bool>.Success(true);
         }
@@ -135,7 +135,7 @@ namespace Ledgance.Accounting.Ledger.Application.Entities {
             await _entities.UpdateAsync(entity, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "entity.archived",
-                "Entity", entity.Id, $"Entity '{entity.Name}' was archived.", entity.Id), ct);
+                "Entity", entity.Id, $"archived the entity {entity.Name}.", entity.Id), ct);
 
             return Result<bool>.Success(true);
         }
@@ -174,6 +174,69 @@ namespace Ledgance.Accounting.Ledger.Application.Entities {
                     IsArchived = entity.IsArchived,
                     CreatedAt = entity.CreatedAt
                 }));
+        }
+    }
+
+    public class PaginatedEntityRow : EntityRow {
+        public int OpenPeriods { get; set; }
+        public int TotalPeriods { get; set; }
+    }
+
+    /// <summary>
+    /// The entity list the books workspace pages through, with the fiscal-period counts each
+    /// card shows.
+    /// </summary>
+    [RequiresPermission(AccountingLedgerPermissions.Read)]
+    public class GetPaginatedEntitiesQuery : PaginatedRequest<PaginatedEntityRow> { }
+
+    public class GetPaginatedEntitiesQueryHandler
+        : IRequestHandler<GetPaginatedEntitiesQuery, PaginatedResult<PaginatedEntityRow>> {
+        private readonly IEntityRepository _entities;
+        private readonly IFiscalPeriodRepository _periods;
+
+        public GetPaginatedEntitiesQueryHandler(IEntityRepository entities,
+            IFiscalPeriodRepository periods) {
+            _entities = entities;
+            _periods = periods;
+        }
+
+        public async Task<PaginatedResult<PaginatedEntityRow>> HandleAsync(
+            GetPaginatedEntitiesQuery request, CancellationToken ct) {
+            var page = Math.Max(1, request.Page);
+            var pageSize = Math.Clamp(request.PageSize, 1, 100);
+
+            var result = await _entities.ListPageAsync(page, pageSize, request.SearchValue, ct);
+
+            var periods = await _periods.CountByEntitiesAsync(
+                result.Rows.Select(entity => entity.Id), ct);
+
+            var rows = result.Rows
+                .Select(entity => {
+                    var counts = periods.GetValueOrDefault(entity.Id,
+                        new EntityPeriodCounts(0, 0));
+
+                    return new PaginatedEntityRow {
+                        Id = entity.Id,
+                        Name = entity.Name,
+                        LegalName = entity.LegalName,
+                        BaseCurrency = entity.BaseCurrency,
+                        IsArchived = entity.IsArchived,
+                        CreatedAt = entity.CreatedAt,
+                        OpenPeriods = counts.Open,
+                        TotalPeriods = counts.Total
+                    };
+                })
+                .ToList();
+
+            return new PaginatedResult<PaginatedEntityRow> {
+                Successful = true,
+                Data = rows,
+                PageNumber = page,
+                ItemsPerPage = pageSize,
+                ResultsCount = rows.Count,
+                TotalResultsCount = (int)result.TotalCount,
+                TotalPages = (int)Math.Ceiling(result.TotalCount / (decimal)pageSize)
+            };
         }
     }
 

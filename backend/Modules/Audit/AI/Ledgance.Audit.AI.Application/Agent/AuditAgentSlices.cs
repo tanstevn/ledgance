@@ -126,7 +126,7 @@ namespace Ledgance.Audit.AI.Application.Agent {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.agent",
                 "Engagement", request.EngagementId,
-                $"An AI agent investigation ran ({run.Steps.Count} tool steps): {Trim(request.Goal)}",
+                $"ran an AI agent investigation over {run.Steps.Count} tool steps: {Trim(request.Goal)}",
                 request.EngagementId), ct);
 
             return Result<AgentRunReport>.Success(

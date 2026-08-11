@@ -54,7 +54,7 @@ namespace Ledgance.Audit.Engagement.Application.Findings {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "finding.raised",
                 "Finding", finding.Id,
-                $"Finding '{finding.Title}' was raised ({finding.Severity}).",
+                $"raised the {finding.Severity} finding {finding.Title}.",
                 request.EngagementId), ct);
 
             return Result<Guid>.Success(finding.Id);
@@ -119,7 +119,7 @@ namespace Ledgance.Audit.Engagement.Application.Findings {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "finding.status_changed",
                 "Finding", finding.Id,
-                $"Finding '{finding.Title}' is now {finding.Status}.",
+                $"marked the finding {finding.Title} as {finding.Status}.",
                 request.EngagementId), ct);
 
             return Result<string>.Success(finding.Status.ToString());

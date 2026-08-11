@@ -71,6 +71,28 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
                 .Filter("status", Constants.Operator.NotEqual,
                     nameof(EngagementStatus.Completed))
                 .Count(Constants.CountType.Exact, ct);
+
+        public async Task<IReadOnlyDictionary<Guid, ClientEngagementCounts>>
+            CountForClientsAsync(IEnumerable<Guid> clientIds, CancellationToken ct) {
+            var ids = clientIds.Distinct().ToList();
+
+            if (ids.Count == 0) {
+                return new Dictionary<Guid, ClientEngagementCounts>();
+            }
+
+            var rows = await _repository.Query()
+                .Filter("client_id", Constants.Operator.In, ids.Select(id => id.ToString()).ToList())
+                .Get(ct);
+
+            return rows.Models
+                .GroupBy(engagement => engagement.ClientId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new ClientEngagementCounts(
+                        group.Count(engagement =>
+                            engagement.Status != nameof(EngagementStatus.Completed)),
+                        group.Count()));
+        }
     }
 
     internal sealed class SupabaseEvidenceFileStore : IEvidenceFileStore {

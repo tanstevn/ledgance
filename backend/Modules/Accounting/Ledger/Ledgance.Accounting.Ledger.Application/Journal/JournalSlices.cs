@@ -142,7 +142,7 @@ namespace Ledgance.Accounting.Ledger.Application.Journal {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "journal.drafted",
                 "JournalEntry", entry.Id,
-                $"Journal entry #{entry.EntryNumber} '{entry.Memo}' was drafted.",
+                $"drafted journal entry #{entry.EntryNumber} ({entry.Memo}).",
                 request.EntityId), ct);
 
             return Result<Guid>.Success(entry.Id);
@@ -237,7 +237,7 @@ namespace Ledgance.Accounting.Ledger.Application.Journal {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "journal.updated",
                 "JournalEntry", entry.Id,
-                $"Journal entry #{entry.EntryNumber} '{entry.Memo}' was updated.",
+                $"updated journal entry #{entry.EntryNumber} ({entry.Memo}).",
                 request.EntityId), ct);
 
             return Result<bool>.Success(true);
@@ -290,7 +290,7 @@ namespace Ledgance.Accounting.Ledger.Application.Journal {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "journal.draft_deleted",
                 "JournalEntry", entry.Id,
-                $"Draft journal entry #{entry.EntryNumber} '{entry.Memo}' was deleted.",
+                $"deleted draft journal entry #{entry.EntryNumber} ({entry.Memo}).",
                 request.EntityId), ct);
 
             return Result<bool>.Success(true);
@@ -363,7 +363,7 @@ namespace Ledgance.Accounting.Ledger.Application.Journal {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "journal.posted",
                 "JournalEntry", entry.Id,
-                $"Journal entry #{entry.EntryNumber} '{entry.Memo}' was posted ({entry.TotalDebits:0.00}).",
+                $"posted journal entry #{entry.EntryNumber} ({entry.Memo}) for {entry.TotalDebits:0.00}.",
                 request.EntityId), ct);
 
             return Result<bool>.Success(true);
@@ -446,7 +446,7 @@ namespace Ledgance.Accounting.Ledger.Application.Journal {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "journal.reversed",
                 "JournalEntry", entry.Id,
-                $"Journal entry #{entry.EntryNumber} was reversed by entry #{reversal.EntryNumber}.",
+                $"reversed journal entry #{entry.EntryNumber} with entry #{reversal.EntryNumber}.",
                 request.EntityId), ct);
 
             return Result<Guid>.Success(reversal.Id);

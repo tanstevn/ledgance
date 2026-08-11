@@ -9,6 +9,12 @@ export interface EntityRow {
   createdAt: string;
 }
 
+/** Row of `GET /api/accounting/entities/paged` — the entity card grid's shape. */
+export interface EntityCardRow extends EntityRow {
+  openPeriods: number;
+  totalPeriods: number;
+}
+
 export interface AccountRow {
   id: string;
   code: string;

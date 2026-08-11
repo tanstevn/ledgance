@@ -66,7 +66,7 @@ namespace Ledgance.Accounting.Ledger.Application.ChartOfAccounts {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "account.created",
                 "Account", account.Id,
-                $"Account {account.Code} '{account.Name}' was created.",
+                $"created the account {account.Code} {account.Name}.",
                 request.EntityId), ct);
 
             return Result<Guid>.Success(account.Id);
@@ -139,7 +139,7 @@ namespace Ledgance.Accounting.Ledger.Application.ChartOfAccounts {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "account.updated",
                 "Account", account.Id,
-                $"Account {account.Code} '{account.Name}' was updated.",
+                $"updated the account {account.Code} {account.Name}.",
                 request.EntityId), ct);
 
             return Result<bool>.Success(true);
@@ -196,7 +196,7 @@ namespace Ledgance.Accounting.Ledger.Application.ChartOfAccounts {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", action,
                 "Account", account.Id,
-                $"Account {account.Code} '{account.Name}' was {verb}.",
+                $"{verb} the account {account.Code} {account.Name}.",
                 request.EntityId), ct);
 
             return Result<bool>.Success(true);

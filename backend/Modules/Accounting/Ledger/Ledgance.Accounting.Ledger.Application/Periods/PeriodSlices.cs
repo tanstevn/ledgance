@@ -57,7 +57,8 @@ namespace Ledgance.Accounting.Ledger.Application.Periods {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "period.created",
                 "FiscalPeriod", period.Id,
-                $"Fiscal period '{period.Name}' ({period.StartDate:yyyy-MM-dd} – {period.EndDate:yyyy-MM-dd}) was created.",
+                $"opened the fiscal period {period.Name} " +
+                $"({period.StartDate:yyyy-MM-dd} – {period.EndDate:yyyy-MM-dd}).",
                 request.EntityId), ct);
 
             return Result<Guid>.Success(period.Id);
@@ -114,7 +115,7 @@ namespace Ledgance.Accounting.Ledger.Application.Periods {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "period.closed",
                 "FiscalPeriod", period.Id,
-                $"Fiscal period '{period.Name}' was closed.", request.EntityId), ct);
+                $"closed the fiscal period {period.Name}.", request.EntityId), ct);
 
             return Result<bool>.Success(true);
         }
@@ -162,7 +163,7 @@ namespace Ledgance.Accounting.Ledger.Application.Periods {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting", "period.reopened",
                 "FiscalPeriod", period.Id,
-                $"Fiscal period '{period.Name}' was reopened.", request.EntityId), ct);
+                $"reopened the fiscal period {period.Name}.", request.EntityId), ct);
 
             return Result<bool>.Success(true);
         }

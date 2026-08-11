@@ -49,7 +49,7 @@ namespace Ledgance.Audit.Engagement.Application.WorkingPapers {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "working_paper.created",
                 "WorkingPaper", paper.Id,
-                $"Working paper {paper.Reference} '{paper.Title}' was created.",
+                $"created the working paper {paper.Reference} {paper.Title}.",
                 request.EngagementId), ct);
 
             return Result<Guid>.Success(paper.Id);
@@ -100,7 +100,7 @@ namespace Ledgance.Audit.Engagement.Application.WorkingPapers {
             await _papers.UpdateAsync(paper, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "working_paper.updated",
-                "WorkingPaper", paper.Id, $"Working paper {paper.Reference} was edited.",
+                "WorkingPaper", paper.Id, $"edited the working paper {paper.Reference}.",
                 request.EngagementId), ct);
 
             return Result<bool>.Success(true);
@@ -170,7 +170,7 @@ namespace Ledgance.Audit.Engagement.Application.WorkingPapers {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "working_paper.signed",
                 "WorkingPaper", paper.Id,
-                $"Working paper {paper.Reference} is now {paper.Status}.",
+                $"marked the working paper {paper.Reference} as {paper.Status}.",
                 request.EngagementId), ct);
 
             return Result<string>.Success(paper.Status.ToString());
@@ -224,7 +224,7 @@ namespace Ledgance.Audit.Engagement.Application.WorkingPapers {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "review_note.raised",
                 "WorkingPaper", paper.Id,
-                $"A review note was raised on {paper.Reference}.",
+                $"raised a review note on the working paper {paper.Reference}.",
                 request.EngagementId), ct);
 
             return Result<Guid>.Success(note.Id);
@@ -279,7 +279,7 @@ namespace Ledgance.Audit.Engagement.Application.WorkingPapers {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "review_note.resolved",
                 "WorkingPaper", paper.Id,
-                $"A review note on {paper.Reference} was resolved.",
+                $"resolved a review note on the working paper {paper.Reference}.",
                 request.EngagementId), ct);
 
             return Result<bool>.Success(true);

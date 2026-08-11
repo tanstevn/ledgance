@@ -6,12 +6,19 @@
 | --- | --- | --- |
 | Audit | `backend/Modules/Audit` | Clients, engagements, planning, materiality, risk, procedures, working papers, evidence, findings, review, reports, audit trail |
 | Accounting | `backend/Modules/Accounting` | Entities, fiscal periods, chart of accounts, transactions, journal entries, GL, reconciliation, trial balance, financial reports, documents, history |
-| Shared | `backend/Shared` | Mediator, `Result<T>`, paging, cross-cutting primitives |
+| Shared | `backend/Shared` | Mediator, `Result<T>`, paging, identity and permissions, entitlements, activity trail, AI and agent abstractions, Supabase bootstrap |
+| Integration | `backend/Integration` | Cross-context adapters; belongs to neither context (ADR-021) |
 | Host | `backend/Ledgance.Api` | HTTP surface, middleware, composition root |
 
 Audit and Accounting each have their own `Client`, `Organization`, and `User` slices.
 **This duplication is deliberate.** An Audit client and an Accounting client are different
 concepts with different lifecycles. Do not "de-duplicate" them into Shared.
+
+Most of those slices are still **scaffolds**: `Accounting/Client`, `Accounting/Organization`,
+`Accounting/User` and `Audit/Organization` contain only a `MediatorAnchor`, and their `*.Domain`
+projects are empty. `Audit/User` carries one real query (`GetOrganizationMembersQuery`, behind
+`GET /api/audit/users`, used for team pickers). The projects exist so the boundary is already in
+place when those capabilities are built.
 
 ## 2. Reference rules
 
@@ -21,6 +28,10 @@ Allowed:
 <Context>.<Feature>.Domain           → Shared.Application (shared kernel: exceptions/primitives only — ADR-014)
 <Context>.<Feature>.Application      → Shared.Application
                                      → <Context>.<Feature>.Domain
+                                     → sibling <Feature>.Application in the SAME context,
+                                       to consume the contract that sibling publishes
+                                       (e.g. Audit.AI.Application → Audit.Engagement.Application;
+                                        Accounting.AI.Application → Accounting.Ledger.Application)
 <Context>.<Feature>.Infrastructure   → <Context>.<Feature>.Application
                                      → <Context>.<Feature>.Domain
                                      → Shared.Infrastructure
@@ -56,7 +67,9 @@ Shared is for **mechanism**, not **meaning**.
 Belongs: mediator abstractions and implementation, `Result<T>`/`PaginatedResult<T>`,
 pagination/sorting helpers, pipeline behaviors (logging, validation, authorization,
 entitlement enforcement), tenant/user context abstraction, Supabase client bootstrap,
-storage abstraction, AI provider abstraction, Stripe client bootstrap, entitlement catalogue.
+storage abstraction, AI provider abstraction, entitlement catalogue, and the billing ports with
+their Stripe adapter (`IBillingGateway` and friends — billing is organization-level, belonging
+to neither product, and both products' subscriptions resolve through it).
 
 Modules extend Shared through explicit seams rather than by adding module concepts to it:
 
@@ -114,8 +127,12 @@ Organisation isolation is enforced at three layers:
 1. `AuthorizationBehavior` — fail-fast: no resolved organisation context, no handler.
 2. `SupabaseRepository<TModel>` — the working guarantee: every read, write and delete of an
    `IOrganizationOwned` model is filtered, stamped, or rejected against the caller's organisation.
-3. Supabase row-level security (`supabase/migrations/0001_foundation.sql`) — the backstop for
-   any direct client access that does not pass through the API.
+3. Supabase row-level security — the backstop for any direct client access that does not pass
+   through the API. Each migration enables RLS and org-scoped read policies for the tables it
+   creates (`0001` foundation, `0002` audit, `0003` AI usage, `0004` accounting, `0005` the
+   integration link); `0006` grants the Data API roles explicitly — `service_role` full access,
+   `authenticated` read-only, `anon` nothing — because newer Supabase projects no longer grant
+   them on `public` by default.
 
 A module that bypasses `SupabaseRepository` and queries `Supabase.Client` directly has opted out
 of layer 2 and must justify it and filter explicitly.
@@ -128,7 +145,7 @@ The split is a packaging change, not a redesign, provided the above holds. When 
    only its own modules.
 2. `Shared` becomes a published internal NuGet package consumed by both.
 3. The Accounting read contract becomes an HTTP/message contract instead of an in-process call —
-   only `LedganceAccountingContextSource` changes.
+   only `LinkedAccountingSourceAdapter` (in `backend/Integration`) changes.
 
 Anything that would make step 3 require touching Audit domain or application code is a
 boundary violation, regardless of whether it compiles today.

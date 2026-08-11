@@ -1,9 +1,15 @@
 using Ledgance.Accounting.Ledger.Domain;
 
 namespace Ledgance.Accounting.Ledger.Application.Ports {
+    public sealed record EntityPage(IReadOnlyList<AccountingEntity> Rows, long TotalCount);
+
+    public sealed record EntityPeriodCounts(int Open, int Total);
+
     public interface IEntityRepository {
         Task<AccountingEntity?> FindAsync(Guid id, CancellationToken ct);
         Task<IReadOnlyList<AccountingEntity>> ListAsync(CancellationToken ct);
+        Task<EntityPage> ListPageAsync(int page, int pageSize, string? search,
+            CancellationToken ct);
         Task<long> CountActiveAsync(CancellationToken ct);
         Task AddAsync(AccountingEntity entity, CancellationToken ct);
         Task UpdateAsync(AccountingEntity entity, CancellationToken ct);
@@ -25,6 +31,14 @@ namespace Ledgance.Accounting.Ledger.Application.Ports {
         Task<FiscalPeriod?> FindContainingAsync(Guid entityId, DateOnly date,
             CancellationToken ct);
         Task<bool> AnyOpenAsync(Guid entityId, CancellationToken ct);
+
+        /// <summary>
+        /// Period counts for a whole page of entities in one call, so the entity list does not
+        /// issue a round trip per card.
+        /// </summary>
+        Task<IReadOnlyDictionary<Guid, EntityPeriodCounts>> CountByEntitiesAsync(
+            IEnumerable<Guid> entityIds, CancellationToken ct);
+
         Task AddAsync(FiscalPeriod period, CancellationToken ct);
         Task UpdateAsync(FiscalPeriod period, CancellationToken ct);
     }

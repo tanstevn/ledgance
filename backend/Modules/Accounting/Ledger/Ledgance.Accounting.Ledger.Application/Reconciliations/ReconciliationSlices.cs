@@ -78,7 +78,7 @@ namespace Ledgance.Accounting.Ledger.Application.Reconciliations {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "reconciliation.started", "Reconciliation", reconciliation.Id,
-                $"Reconciliation of account {account.Code} '{account.Name}' as of {request.StatementDate:yyyy-MM-dd} was started.",
+                $"started a reconciliation of account {account.Code} {account.Name} as of {request.StatementDate:yyyy-MM-dd}.",
                 request.EntityId), ct);
 
             return Result<Guid>.Success(reconciliation.Id);
@@ -201,7 +201,7 @@ namespace Ledgance.Accounting.Ledger.Application.Reconciliations {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "reconciliation.completed", "Reconciliation", reconciliation.Id,
-                $"Reconciliation of account {account.Code} '{account.Name}' was completed (difference {reconciliation.Difference:0.00}).",
+                $"completed the reconciliation of account {account.Code} {account.Name} with a difference of {reconciliation.Difference:0.00}.",
                 request.EntityId), ct);
 
             return Result<bool>.Success(true);
@@ -250,7 +250,7 @@ namespace Ledgance.Accounting.Ledger.Application.Reconciliations {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "reconciliation.cancelled", "Reconciliation", reconciliation.Id,
-                "The reconciliation was cancelled.", request.EntityId), ct);
+                "cancelled the reconciliation.", request.EntityId), ct);
 
             return Result<bool>.Success(true);
         }

@@ -81,7 +81,7 @@ namespace Ledgance.Accounting.AI.Application.Suggestions {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "ai.entry_suggestion", "Entity", request.EntityId,
-                "An AI journal-entry suggestion was generated.", request.EntityId), ct);
+                "generated an AI journal-entry suggestion.", request.EntityId), ct);
 
             return Result<AiProposalResult>.Success(
                 AiProposalResult.From(AccountingAiCapabilities.EntrySuggestion, completion));
@@ -154,7 +154,7 @@ namespace Ledgance.Accounting.AI.Application.Suggestions {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "ai.reconciliation_assistance", "Reconciliation", reconciliation.Id,
-                $"AI assistance was generated for the reconciliation of {account.Code}.",
+                $"generated AI assistance for the reconciliation of account {account.Code}.",
                 request.EntityId), ct);
 
             return Result<AiProposalResult>.Success(AiProposalResult.From(
@@ -228,7 +228,7 @@ namespace Ledgance.Accounting.AI.Application.Suggestions {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "ai.statement_explanation", "FiscalPeriod", period.Id,
-                $"An AI statement explanation for '{period.Name}' was generated.",
+                $"generated an AI statement explanation for {period.Name}.",
                 request.EntityId), ct);
 
             return Result<AiProposalResult>.Success(AiProposalResult.From(
@@ -317,7 +317,7 @@ namespace Ledgance.Accounting.AI.Application.Suggestions {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "ai.variance_analysis", "Entity", request.EntityId,
-                $"An AI variance analysis of '{basePeriod.Name}' vs '{comparePeriod.Name}' was generated.",
+                $"generated an AI variance analysis of {basePeriod.Name} against {comparePeriod.Name}.",
                 request.EntityId), ct);
 
             return Result<AiProposalResult>.Success(AiProposalResult.From(

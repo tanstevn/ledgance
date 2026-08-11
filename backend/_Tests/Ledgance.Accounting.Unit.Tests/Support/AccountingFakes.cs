@@ -21,6 +21,22 @@ namespace Ledgance.Accounting.Unit.Tests.Support {
         public Task<IReadOnlyList<AccountingEntity>> ListAsync(CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<AccountingEntity>>(Entities.ToList());
 
+        public Task<EntityPage> ListPageAsync(int page, int pageSize, string? search,
+            CancellationToken ct) {
+            var matching = Entities
+                .Where(entity => string.IsNullOrWhiteSpace(search)
+                    || entity.Name.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase))
+                .OrderBy(entity => entity.Name)
+                .ToList();
+
+            var rows = matching
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Task.FromResult(new EntityPage(rows, matching.Count));
+        }
+
         public Task<long> CountActiveAsync(CancellationToken ct) =>
             Task.FromResult((long)Entities.Count(entity => !entity.IsArchived));
 
@@ -81,6 +97,19 @@ namespace Ledgance.Accounting.Unit.Tests.Support {
         public Task<bool> AnyOpenAsync(Guid entityId, CancellationToken ct) =>
             Task.FromResult(Periods.Any(period =>
                 period.EntityId == entityId && period.IsOpen));
+
+        public Task<IReadOnlyDictionary<Guid, EntityPeriodCounts>> CountByEntitiesAsync(
+            IEnumerable<Guid> entityIds, CancellationToken ct) {
+            var ids = entityIds.Distinct().ToHashSet();
+
+            return Task.FromResult<IReadOnlyDictionary<Guid, EntityPeriodCounts>>(Periods
+                .Where(period => ids.Contains(period.EntityId))
+                .GroupBy(period => period.EntityId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new EntityPeriodCounts(
+                        group.Count(period => period.IsOpen), group.Count())));
+        }
 
         public Task AddAsync(FiscalPeriod period, CancellationToken ct) {
             Periods.Add(period);

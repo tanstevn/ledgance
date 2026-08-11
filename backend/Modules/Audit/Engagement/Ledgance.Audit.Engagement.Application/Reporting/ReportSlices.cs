@@ -50,7 +50,7 @@ namespace Ledgance.Audit.Engagement.Application.Reporting {
             await _reports.UpsertAsync(report, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "report.drafted",
-                "AuditReport", report.Id, "The audit report draft was updated.",
+                "AuditReport", report.Id, "updated the audit report draft.",
                 request.EngagementId), ct);
 
             return Result<Guid>.Success(report.Id);
@@ -104,7 +104,7 @@ namespace Ledgance.Audit.Engagement.Application.Reporting {
             await _reports.UpsertAsync(report, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "report.finalized",
-                "AuditReport", report.Id, "The audit report was finalized.",
+                "AuditReport", report.Id, "finalized the audit report.",
                 request.EngagementId), ct);
 
             return Result<bool>.Success(true);

@@ -79,7 +79,7 @@ namespace Ledgance.Audit.Engagement.Application.Engagements {
                 EngagementRole.Partner), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "engagement.created",
-                "Engagement", engagement.Id, $"Engagement '{engagement.Name}' was created.",
+                "Engagement", engagement.Id, $"created the engagement {engagement.Name}.",
                 engagement.Id), ct);
 
             return Result<CreateEngagementCommandResult>
@@ -135,7 +135,7 @@ namespace Ledgance.Audit.Engagement.Application.Engagements {
             await _engagements.UpdateAsync(engagement, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "engagement.updated",
-                "Engagement", engagement.Id, $"Engagement '{engagement.Name}' was updated.",
+                "Engagement", engagement.Id, $"updated the engagement {engagement.Name}.",
                 engagement.Id), ct);
 
             return Result<bool>.Success(true);
@@ -203,7 +203,7 @@ namespace Ledgance.Audit.Engagement.Application.Engagements {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "engagement.status_changed",
                 "Engagement", engagement.Id,
-                $"Engagement '{engagement.Name}' moved to {engagement.Status}.",
+                $"moved {engagement.Name} to {engagement.Status}.",
                 engagement.Id), ct);
 
             return Result<string>.Success(engagement.Status.ToString());

@@ -13,15 +13,22 @@ namespace Ledgance.Audit.Client.Application.Queries {
         public string Email { get; set; } = default!;
         public string Phone { get; set; } = default!;
         public string Industry { get; set; } = default!;
+        public string ContactName { get; set; } = default!;
+        public string? Website { get; set; }
         public bool IsArchived { get; set; }
+        public int ActiveEngagements { get; set; }
+        public int TotalEngagements { get; set; }
     }
 
     public class GetPaginatedClientsQueryHandler
         : IRequestHandler<GetPaginatedClientsQuery, PaginatedResult<GetPaginatedClientsQueryRow>> {
         private readonly IClientRepository _clients;
+        private readonly IClientEngagementCounter _engagements;
 
-        public GetPaginatedClientsQueryHandler(IClientRepository clients) {
+        public GetPaginatedClientsQueryHandler(IClientRepository clients,
+            IClientEngagementCounter engagements) {
             _clients = clients;
+            _engagements = engagements;
         }
 
         public async Task<PaginatedResult<GetPaginatedClientsQueryRow>> HandleAsync(
@@ -31,14 +38,26 @@ namespace Ledgance.Audit.Client.Application.Queries {
 
             var result = await _clients.ListPageAsync(page, pageSize, request.SearchValue, ct);
 
+            var counts = await _engagements.CountForClientsAsync(
+                result.Rows.Select(client => client.Id), ct);
+
             var rows = result.Rows
-                .Select(client => new GetPaginatedClientsQueryRow {
-                    Id = client.Id,
-                    Name = client.Name,
-                    Email = client.ContactEmail,
-                    Phone = client.ContactPhone,
-                    Industry = client.Industry,
-                    IsArchived = client.IsArchived
+                .Select(client => {
+                    var engagements = counts.GetValueOrDefault(client.Id,
+                        new ClientEngagementCounts(0, 0));
+
+                    return new GetPaginatedClientsQueryRow {
+                        Id = client.Id,
+                        Name = client.Name,
+                        Email = client.ContactEmail,
+                        Phone = client.ContactPhone,
+                        Industry = client.Industry,
+                        ContactName = client.ContactName,
+                        Website = client.Website,
+                        IsArchived = client.IsArchived,
+                        ActiveEngagements = engagements.Active,
+                        TotalEngagements = engagements.Total
+                    };
                 })
                 .ToList();
 

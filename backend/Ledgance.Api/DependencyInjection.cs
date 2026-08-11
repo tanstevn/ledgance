@@ -8,6 +8,7 @@ using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Infrastructure;
 using Ledgance.Shared.Infrastructure;
 using Ledgance.Shared.Infrastructure.Ai;
+using Ledgance.Shared.Infrastructure.Billing;
 using Ledgance.Shared.Infrastructure.Authentication;
 using Ledgance.Shared.Infrastructure.Identity;
 using Ledgance.Shared.Infrastructure.Mediator;
@@ -87,6 +88,7 @@ namespace Ledgance.Api {
             });
             services.AddSupabaseAuthentication(config);
             services.AddLedganceAi(config);
+            services.AddLedganceBilling(config);
 
             services.AddAuditClientInfrastructure();
             services.AddAuditEngagementInfrastructure();

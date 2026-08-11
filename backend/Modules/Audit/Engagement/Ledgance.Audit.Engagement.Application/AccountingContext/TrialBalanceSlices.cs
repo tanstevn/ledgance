@@ -155,7 +155,7 @@ namespace Ledgance.Audit.Engagement.Application.AccountingContext {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "trial_balance.imported",
                 "TrialBalance", import.Id,
-                $"A trial balance ({import.Lines.Count} lines, {(import.IsBalanced ? "balanced" : "OUT OF BALANCE")}) was imported.",
+                $"imported a trial balance of {import.Lines.Count} lines ({(import.IsBalanced ? "balanced" : "OUT OF BALANCE")}).",
                 request.EngagementId), ct);
 
             return Result<ImportTrialBalanceResult>.Success(new ImportTrialBalanceResult {

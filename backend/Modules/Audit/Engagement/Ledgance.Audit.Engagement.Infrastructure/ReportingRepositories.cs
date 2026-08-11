@@ -26,6 +26,18 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
             return rows.Models.Select(ToDomain).ToList();
         }
 
+        public async Task<Evidence?> FindByFileNameAsync(Guid engagementId, string fileName,
+            CancellationToken ct) {
+            var rows = await _repository.Query()
+                .Filter("engagement_id", Constants.Operator.Equals, engagementId.ToString())
+                .Filter("file_name", Constants.Operator.Equals, fileName)
+                .Limit(1)
+                .Get(ct);
+
+            var model = rows.Models.FirstOrDefault();
+            return model is null ? null : ToDomain(model);
+        }
+
         public async Task<long> SumSizeBytesAsync(CancellationToken ct) {
             var rows = await _repository.Query().Get(ct);
             return rows.Models.Sum(model => model.SizeBytes);
@@ -45,8 +57,15 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
         private static Evidence ToDomain(EvidenceModel model) =>
             Evidence.Restore(model.Id, model.EngagementId, model.WorkingPaperId,
                 model.ProcedureId, model.FileName, model.ContentType, model.SizeBytes,
-                model.StoragePath, model.Version, model.Description, model.UploadedBy,
-                model.UploadedAt);
+                model.StoragePath, model.Version, model.Description,
+                Enum.TryParse<EvidenceCategory>(model.Category, out var category)
+                    ? category
+                    : EvidenceCategory.Evidence,
+                model.Tags,
+                model.VersionHistory.Select(entry => new EvidenceVersion(entry.Version,
+                    entry.StoragePath, entry.SizeBytes, entry.ContentType, entry.Note,
+                    entry.UploadedBy, entry.UploadedAt)),
+                model.UploadedBy, model.UploadedAt);
 
         private static EvidenceModel ToModel(Evidence evidence) =>
             new() {
@@ -60,6 +79,18 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
                 StoragePath = evidence.StoragePath,
                 Version = evidence.Version,
                 Description = evidence.Description,
+                Category = evidence.Category.ToString(),
+                Tags = [.. evidence.Tags],
+                VersionHistory = [.. evidence.PriorVersions.Select(entry =>
+                    new EvidenceVersionDoc {
+                        Version = entry.Version,
+                        StoragePath = entry.StoragePath,
+                        SizeBytes = entry.SizeBytes,
+                        ContentType = entry.ContentType,
+                        Note = entry.Note,
+                        UploadedBy = entry.UploadedBy,
+                        UploadedAt = entry.UploadedAt
+                    })],
                 UploadedBy = evidence.UploadedBy,
                 UploadedAt = evidence.UploadedAt
             };

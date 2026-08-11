@@ -42,7 +42,7 @@ namespace Ledgance.Audit.Client.Application.Commands {
             await _clients.UpdateAsync(client, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "client.archived",
-                "Client", client.Id, $"Client '{client.Name}' was archived."), ct);
+                "Client", client.Id, $"archived the client {client.Name}."), ct);
 
             return Result<bool>.Success(true);
         }

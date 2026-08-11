@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Loader2, Trash2, UserPlus } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Loader2,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,15 +17,203 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { FieldSelect, fmtDate, fmtMoney } from "@/components/workspace";
+import {
+  FieldSelect,
+  ProgressTrack,
+  StatusPill,
+  fmtDate,
+  fmtMoney,
+} from "@/components/workspace";
 import { useApiAction, useApiQuery } from "@/hooks/query";
 import {
   engagementRoles,
   type EngagementDetail,
   type OrganizationMemberRow,
+  type WorkingPaperRow,
 } from "@/lib/audit-types";
 
+export interface EngagementGate {
+  label: string;
+  cleared: boolean;
+  outstanding: number;
+  tab: string;
+}
+
+/**
+ * The stage gates the Engagement aggregate itself checks before a status transition — the
+ * overview and the header band read from this one list so they cannot disagree.
+ */
+export function engagementGates(engagement: EngagementDetail): EngagementGate[] {
+  const progress = engagement.progress;
+
+  return [
+    {
+      label: "Procedures closed",
+      outstanding: progress.openProcedures,
+      cleared: progress.openProcedures === 0,
+      tab: "procedures",
+    },
+    {
+      label: "Working papers approved",
+      outstanding: progress.unapprovedWorkingPapers,
+      cleared: progress.unapprovedWorkingPapers === 0,
+      tab: "papers",
+    },
+    {
+      label: "Review notes resolved",
+      outstanding: progress.openReviewNotes,
+      cleared: progress.openReviewNotes === 0,
+      tab: "papers",
+    },
+    {
+      label: "Findings resolved",
+      outstanding: progress.openFindings,
+      cleared: progress.openFindings === 0,
+      tab: "findings",
+    },
+    {
+      label: "High risks addressed",
+      outstanding: progress.unaddressedHighRisks,
+      cleared: progress.unaddressedHighRisks === 0,
+      tab: "risks",
+    },
+    {
+      label: "Report finalized",
+      outstanding: progress.reportFinalized ? 0 : 1,
+      cleared: progress.reportFinalized,
+      tab: "report",
+    },
+  ];
+}
+
+const signOffStates = ["Approved", "Reviewed", "Prepared", "Draft"] as const;
+
+function SignOffStatus({ papers }: { papers: WorkingPaperRow[] }) {
+  const counts = signOffStates.map((state) => ({
+    state,
+    count: papers.filter((paper) => paper.status === state).length,
+  }));
+
+  const max = Math.max(1, ...counts.map((entry) => entry.count));
+
+  return (
+    <Card className="border-border/60">
+      <CardHeader className="pb-3">
+        <CardTitle className="font-display text-base font-semibold">
+          Working paper sign-off status
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {papers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No working papers yet. They appear here as the team prepares, reviews and
+            approves them.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {counts.map(({ state, count }) => (
+              <div key={state} className="flex items-center gap-3">
+                <span className="w-24 shrink-0">
+                  <StatusPill value={state} />
+                </span>
+                <ProgressTrack
+                  value={count}
+                  max={max}
+                  tone={state === "Approved" ? "bg-success" : "bg-primary"}
+                />
+                <span className="w-6 shrink-0 text-right text-sm font-semibold">
+                  {count}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function NeedsAttention({
+  engagement,
+  onNavigate,
+}: {
+  engagement: EngagementDetail;
+  onNavigate: (tab: string) => void;
+}) {
+  const gates = engagementGates(engagement);
+  const outstanding = gates.filter((gate) => !gate.cleared);
+
+  return (
+    <Card className="border-border/60">
+      <CardHeader className="pb-3">
+        <CardTitle className="font-display text-base font-semibold">
+          Needs attention
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1.5">
+        {!engagement.plan?.isApproved && (
+          <button
+            type="button"
+            onClick={() => onNavigate("planning")}
+            className="flex w-full items-center justify-between rounded-xl border border-border/60 px-3 py-2.5 text-left text-sm transition-colors hover:border-primary/40"
+          >
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              {engagement.plan ? "Audit plan not approved" : "Audit plan not written"}
+            </span>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
+
+        {outstanding.map((gate) => (
+          <button
+            key={gate.label}
+            type="button"
+            onClick={() => onNavigate(gate.tab)}
+            className="flex w-full items-center justify-between rounded-xl border border-border/60 px-3 py-2.5 text-left text-sm transition-colors hover:border-primary/40"
+          >
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              {gate.label}
+            </span>
+            <span className="flex items-center gap-2 text-xs text-muted-foreground">
+              {gate.label === "Report finalized" ? "pending" : `${gate.outstanding} open`}
+              <ArrowRight className="h-4 w-4" />
+            </span>
+          </button>
+        ))}
+
+        {outstanding.length === 0 && engagement.plan?.isApproved && (
+          <p className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5 text-sm text-success">
+            <CheckCircle2 className="h-4 w-4" />
+            Every stage gate is clear — this engagement is ready to sign off.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The overview per the product design: sign-off state on the left, what's blocking on the right. */
 export function OverviewTab({
+  engagement,
+  papers,
+  onNavigate,
+}: {
+  engagement: EngagementDetail;
+  papers: WorkingPaperRow[];
+  onNavigate: (tab: string) => void;
+}) {
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <SignOffStatus papers={papers} />
+      <NeedsAttention engagement={engagement} onNavigate={onNavigate} />
+    </div>
+  );
+}
+
+/** Plan, materiality and the engagement facts — the editing surfaces the overview used to host. */
+export function PlanningTab({
   engagement,
   onChanged,
 }: {

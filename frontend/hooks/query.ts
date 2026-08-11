@@ -6,6 +6,8 @@ import {
   QueryClient,
   UseMutationOptions,
   UseQueryOptions,
+  keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
 } from "@tanstack/react-query";
@@ -18,7 +20,7 @@ export const DefaultPagination = {
 
 const usePaginatedQuery = <T>(
   url: string,
-  params: PaginatedRequest<T>,
+  params: PaginatedRequest<T> & Record<string, unknown>,
   options?: Omit<UseQueryOptions<PaginatedResult<T>, ResultErrors>, "queryKey">,
 ) => {
   const formattedUrl = formatFullUrl(url);
@@ -29,7 +31,47 @@ const usePaginatedQuery = <T>(
       const result = await get<PaginatedResult<T>>(formattedUrl, params);
       return result.successful ? result : Promise.reject(result.errors);
     },
+    // Page and filter changes swap the query key; keeping the previous rows on screen while
+    // the next page loads turns pagination into a content swap instead of a skeleton flash.
+    placeholderData: keepPreviousData,
     ...options,
+  });
+};
+
+/**
+ * Pages a list endpoint one page at a time and keeps the pages loaded — the shape the card
+ * grids use, where scrolling to the end asks the API for the next page rather than pulling the
+ * whole table up front.
+ */
+const useApiInfiniteQuery = <T>(
+  url: string,
+  params: PaginatedRequest<T> & Record<string, unknown> = {},
+  options?: { queryKey?: unknown[]; enabled?: boolean },
+) => {
+  const formattedUrl = formatFullUrl(url);
+
+  return useInfiniteQuery<
+    PaginatedResult<T>,
+    ResultErrors,
+    { pages: PaginatedResult<T>[]; pageParams: number[] },
+    unknown[],
+    number
+  >({
+    queryKey: options?.queryKey ?? [url, params],
+    enabled: options?.enabled,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const result = await get<PaginatedResult<T>>(formattedUrl, {
+        ...params,
+        page: pageParam,
+      });
+      return result.successful ? result : Promise.reject(result.errors);
+    },
+    getNextPageParam: (last) =>
+      last.pageNumber < last.totalPages ? last.pageNumber + 1 : undefined,
+    // A search-term change swaps the query key; the grid keeps showing the previous cards
+    // until the filtered set arrives.
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -156,6 +198,18 @@ const useApiUpload = <TResponse = unknown>(
     ...options,
   });
 
+/**
+ * One-off GET outside the query cache — for values that must be fresh on every call, such
+ * as short-lived signed download URLs.
+ */
+const fetchApiData = async <T>(
+  url: string,
+  queryParams?: Record<string, unknown>,
+): Promise<T> => {
+  const result = await get<Result<T>>(formatFullUrl(url), queryParams);
+  return result.successful ? result.data : Promise.reject(result.errors);
+};
+
 const formatFullUrl = (url: string) => {
   let baseAddr = process.env.NEXT_PUBLIC_API_URL;
 
@@ -176,10 +230,12 @@ const formatFullUrl = (url: string) => {
 
 export {
   usePaginatedQuery,
+  useApiInfiniteQuery,
   useApiQuery,
   useApiMutation,
   useApiAction,
   useApiUpload,
+  fetchApiData,
   prefetchApiQuery,
   prefetchPaginatedQuery,
 };

@@ -49,7 +49,7 @@ a boolean capability, or a tier.
 | `max_clients` | limit | Audit |
 | `max_engagements` | limit | Audit |
 | `max_entities` | limit | Accounting |
-| `max_transactions` | limit (per period) | Accounting |
+| `max_transactions_per_period` | limit (per fiscal period) | Accounting |
 | `storage_bytes` | limit | both |
 | `ai_enabled` | capability | both |
 | `ai_monthly_units` | limit | both |
@@ -63,8 +63,17 @@ a boolean capability, or a tier.
 | `accounting_context_sharing` | capability | cross-product |
 | `enterprise_support` | capability | both |
 
+Every plan declares **every** key. A plan carries `0` for the other product's dimensions — an
+Audit plan sets `max_entities`/`max_transactions_per_period` to `0`, an Accounting plan sets
+`max_clients`/`max_engagements` to `0` — so a limit check on the wrong product fails closed
+rather than reading as unlimited. `-1` is unlimited.
+
+There are **nine plan codes**, not ten: `Free` is a single shared code used for both products,
+plus four paid Audit codes and four paid Accounting codes. A Free organisation therefore gets the
+same entitlement row for Audit and Accounting.
+
 Enterprise values are negotiated and stored per organisation as an override on top of the
-plan's catalogue entry.
+plan's catalogue entry (`organization_subscriptions.entitlement_overrides`, a jsonb map).
 
 ## 4. Enforcement
 
@@ -91,19 +100,37 @@ reads as `0`, so a missing entitlement fails closed.
 The frontend may read entitlements to hide or annotate UI. That is presentation only. Every
 gated operation is re-checked server-side.
 
-## 5. Stripe mapping
+## 5. Stripe mapping **[implemented — Phase 9]**
 
-- One Stripe **Customer** per organisation.
-- One Stripe **Product** per plan, per Ledgance product. Prices carry the interval.
-- Checkout Sessions for purchase; Billing Portal for self-serve upgrade/downgrade/cancel.
-- **Webhooks are the source of truth** for subscription state. The application never infers
-  entitlement from a redirect or a client-side signal.
-- Webhook handling must verify the signature, be idempotent, and tolerate out-of-order delivery.
-- Local Philippine methods (GCash, Maya) and other international methods are enabled through
-  Stripe payment method configuration, not custom code.
+- One Stripe **Customer** per organisation, created on first checkout and reused after.
+- One Stripe **Product/Price** per paid plan, created in the Stripe dashboard and mapped to a
+  plan code through `Stripe:Prices:<PlanCode>` configuration — the value must be a `price_…`
+  identifier; anything else is rejected at startup with a warning. A plan with no usable price is
+  reported as not purchasable and is refused server-side, so nothing is ever sold at a guessed
+  price. The **amount shown to customers is read back from Stripe** (`IBillingPriceReader`,
+  cached), so the pricing page, subscribe page and plan picker cannot drift from the invoice.
+- **Checkout Sessions** for purchase (`POST /api/billing/checkout`), the **Billing Portal** for
+  payment methods and invoices (`POST /api/billing/portal`), a subscription item swap for
+  upgrade/downgrade (`POST /api/billing/change-plan`) and `cancel_at_period_end` for cancellation
+  and resumption (`POST /api/billing/cancel`).
+- No row at all resolves to Free, as does any row whose status is not Active or Trialing.
 
-Relevant events: `checkout.session.completed`, `customer.subscription.created|updated|deleted`,
-`invoice.paid`, `invoice.payment_failed`.
+- **Webhooks are the source of truth** for subscription state (`POST /api/billing/webhook`,
+  anonymous and signature-verified). The application never infers entitlement from a redirect or
+  a client-side signal; `/subscribe/success` shows a pending state until the event lands.
+- Handling verifies the signature before reading the payload, is idempotent (`billing_events`
+  keyed by the provider event id) and tolerates out-of-order delivery (an event older than the
+  stored `last_event_at` is discarded).
+- Handled events: `checkout.session.completed`,
+  `customer.subscription.created|updated|deleted`, `invoice.paid`, `invoice.payment_failed`.
+  Anything else is acknowledged and ignored.
+- Which plan is active is read from the **price** the provider bills, so a change made in
+  Stripe's own portal syncs back; checkout metadata (organisation, module, plan) covers the
+  first event, before any price is known to us.
+- Payment methods are not listed in code: the account's own configuration decides what a
+  customer sees, which is how cards and wallets reach international customers and how local
+  methods such as GCash and Maya reach Philippine customers when the account and the plan's
+  recurring terms support them. `Stripe:PaymentMethodTypes` can pin the list when needed.
 
 ## 6. Free tier intent
 

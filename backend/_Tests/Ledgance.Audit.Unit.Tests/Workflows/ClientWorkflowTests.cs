@@ -85,6 +85,11 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
             var entry = Assert.Single(recorder.Entries);
             Assert.Equal("client.created", entry.Action);
             Assert.Equal("Audit", entry.Module);
+
+            // The summary is a predicate, so the reader renders "You created the client …" as
+            // one sentence. A standalone sentence here would read "You Client 'X' was created."
+            Assert.Equal("created the client Northgate Holdings.", entry.Summary);
+            Assert.True(char.IsLower(entry.Summary[0]));
         }
     }
 }

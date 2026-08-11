@@ -100,9 +100,10 @@ the caller's plan.
 | reasoning | Anomaly detection (trial balance) | `POST engagements/{id}/detect-anomalies` |
 | reasoning | Review assistance | `POST engagements/{id}/assist-review` |
 | reasoning | Audit report drafting | `POST engagements/{id}/draft-report` |
+| agentic | Multi-step agentic investigation (§8) | `POST engagements/{id}/agent` |
 
 Plan mapping (from `SubscriptionPlanCatalog`): Free → basic; Audit Professional → +advanced;
-Audit Organization → +reasoning; Firm/Enterprise → agentic tier reserved for Phase 7.
+Audit Organization → +reasoning; Audit Firm/Enterprise → +agentic.
 
 Known limits: evidence summarization works from recorded metadata/description (binary file
 content extraction is future work); report drafting marks partner judgments with
@@ -128,9 +129,10 @@ with an `included` flag for the caller's plan.
 | reasoning | Anomaly detection (ledger/TB) | `POST entities/{id}/periods/{periodId}/detect-anomalies` |
 | reasoning | Complex financial analysis | `POST entities/{id}/periods/{periodId}/analyze-financials` |
 | reasoning | Period-close review | `POST entities/{id}/periods/{periodId}/assist-close` |
+| agentic | Multi-step agentic investigation (§8) | `POST entities/{id}/agent` |
 
 Plan mapping (from `SubscriptionPlanCatalog`): Free → basic; Solo/Team → +advanced;
-Accounting Professional → +reasoning; Enterprise → agentic tier reserved for Phase 7.
+Accounting Professional → +reasoning; Accounting Enterprise → +agentic.
 
 Context is assembled by `LedgerAiContext` from the Ledger module's own repositories (entity
 overview, chart of accounts, journal entries, computed trial balance and statements,

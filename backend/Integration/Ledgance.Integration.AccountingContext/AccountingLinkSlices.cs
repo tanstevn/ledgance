@@ -58,8 +58,8 @@ namespace Ledgance.Integration.AccountingContext {
                 ? "accounting_link.enabled"
                 : "accounting_link.disabled";
             var summary = request.Enabled
-                ? "Audit access to the organization's Ledgance Accounting books was enabled."
-                : "Audit access to the organization's Ledgance Accounting books was disabled.";
+                ? "enabled Audit access to the organization's Ledgance Accounting books."
+                : "disabled Audit access to the organization's Ledgance Accounting books.";
 
             await _activity.RecordAsync(new ActivityEntry("Integration", action,
                 "Organization", organizationId, summary), ct);

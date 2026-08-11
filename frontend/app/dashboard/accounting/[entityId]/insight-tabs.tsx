@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -35,6 +36,7 @@ import { toast } from "sonner";
 import {
   EmptyCard,
   ErrorCard,
+  FileDropZone,
   FieldSelect,
   LoadingRows,
   StatusPill,
@@ -43,6 +45,9 @@ import {
   fmtMoney,
 } from "@/components/workspace";
 import { useApiAction, useApiQuery, useApiUpload } from "@/hooks/query";
+import { useAuth } from "@/components/auth-context";
+import { useSession } from "@/hooks/session";
+import { activitySentence } from "@/lib/activity";
 import type {
   AccountRow,
   ActivityRow,
@@ -430,63 +435,80 @@ export function ReconciliationsTab({ entityId }: { entityId: string }) {
   );
 }
 
-export function DocumentsTab({ entityId }: { entityId: string }) {
+function UploadDocumentsDialog({
+  entityId,
+  open,
+  onOpenChange,
+}: {
+  entityId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const queryClient = useQueryClient();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [description, setDescription] = useState("");
 
-  const documents = useApiQuery<DocumentRow[]>(
-    `/api/accounting/entities/${entityId}/documents`,
-    { queryKey: ["acc-docs", entityId] },
-  );
+  const reset = () => {
+    setFiles([]);
+    setDescription("");
+  };
 
   const upload = useApiUpload({
     onSuccess: () => {
-      toast.success("Document uploaded.");
-      setFile(null);
-      setDescription("");
+      toast.success(
+        files.length === 1 ? "Document uploaded." : `${files.length} documents uploaded.`,
+      );
+      reset();
+      onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ["acc-docs", entityId] });
     },
-    onError: (errors) => toast.error(errors.join(" ")),
+    onError: (errors) => {
+      toast.error(errors.join(" "));
+      queryClient.invalidateQueries({ queryKey: ["acc-docs", entityId] });
+    },
   });
 
-  if (documents.isLoading) return <LoadingRows />;
-  if (documents.isError)
-    return (
-      <ErrorCard errors={documents.error} onRetry={() => documents.refetch()} />
-    );
-
   return (
-    <div className="space-y-4">
-      <Card className="border-border/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="font-display text-base font-semibold">
-            Upload a source document
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="min-w-60 space-y-1.5">
-            <Label>File</Label>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !upload.isPending) reset();
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Upload documents</DialogTitle>
+          <DialogDescription>
+            Attach invoices, receipts and statements to keep the books audit-ready.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <FileDropZone
+            files={files}
+            onSelect={setFiles}
+            disabled={upload.isPending}
+          />
+          <div className="space-y-1.5">
+            <Label htmlFor="acc-doc-description">Description (optional)</Label>
             <Input
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
-          <div className="min-w-60 flex-1 space-y-1.5">
-            <Label>Description</Label>
-            <Input
+              id="acc-doc-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="March supplier invoice"
+              disabled={upload.isPending}
             />
           </div>
+        </div>
+
+        <DialogFooter>
           <Button
             className="font-semibold"
-            disabled={!file || upload.isPending}
+            disabled={files.length === 0 || upload.isPending}
             onClick={() => {
-              if (!file) return;
               const form = new FormData();
-              form.append("file", file);
+              files.forEach((file) => form.append("files", file));
               form.append("description", description);
               upload.mutate({
                 url: `/api/accounting/entities/${entityId}/documents`,
@@ -499,10 +521,46 @@ export function DocumentsTab({ entityId }: { entityId: string }) {
             ) : (
               <Upload className="mr-2 h-4 w-4" />
             )}
-            Upload
+            Upload{files.length > 1 ? ` ${files.length} files` : ""}
           </Button>
-        </CardContent>
-      </Card>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function DocumentsTab({ entityId }: { entityId: string }) {
+  const [uploading, setUploading] = useState(false);
+
+  const documents = useApiQuery<DocumentRow[]>(
+    `/api/accounting/entities/${entityId}/documents`,
+    { queryKey: ["acc-docs", entityId] },
+  );
+
+  if (documents.isLoading) return <LoadingRows />;
+  if (documents.isError)
+    return (
+      <ErrorCard errors={documents.error} onRetry={() => documents.refetch()} />
+    );
+
+  const uploadButton = (
+    <Button className="font-semibold" onClick={() => setUploading(true)}>
+      <Upload className="mr-2 h-4 w-4" />
+      Upload document
+    </Button>
+  );
+
+  return (
+    <div className="space-y-4">
+      <UploadDocumentsDialog
+        entityId={entityId}
+        open={uploading}
+        onOpenChange={setUploading}
+      />
+
+      {documents.data && documents.data.length > 0 && (
+        <div className="flex justify-end">{uploadButton}</div>
+      )}
 
       {documents.data && documents.data.length > 0 ? (
         <div className="space-y-2">
@@ -526,6 +584,7 @@ export function DocumentsTab({ entityId }: { entityId: string }) {
           icon={FileText}
           title="No documents yet"
           body="Attach invoices, receipts and statements to keep the books audit-ready."
+          action={uploadButton}
         />
       )}
     </div>
@@ -533,6 +592,8 @@ export function DocumentsTab({ entityId }: { entityId: string }) {
 }
 
 export function ActivityTab({ entityId }: { entityId: string }) {
+  const { user } = useAuth();
+  const { data: session } = useSession(!!user);
   const activity = useApiQuery<ActivityRow[]>(
     `/api/accounting/entities/${entityId}/activity`,
     { queryKey: ["acc-activity", entityId] },
@@ -553,7 +614,7 @@ export function ActivityTab({ entityId }: { entityId: string }) {
         >
           <History className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm">{entry.summary}</p>
+            <p className="text-sm">{activitySentence(entry, session)}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {entry.actorEmail} · {new Date(entry.occurredAt).toLocaleString()}
             </p>

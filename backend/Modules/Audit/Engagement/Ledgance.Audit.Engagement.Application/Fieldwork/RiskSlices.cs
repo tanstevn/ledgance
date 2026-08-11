@@ -48,7 +48,7 @@ namespace Ledgance.Audit.Engagement.Application.Fieldwork {
             await _risks.AddAsync(risk, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "risk.identified",
-                "Risk", risk.Id, $"Risk '{risk.Title}' was identified ({risk.Level}).",
+                "Risk", risk.Id, $"identified the risk {risk.Title}, rated {risk.Level}.",
                 request.EngagementId), ct);
 
             return Result<Guid>.Success(risk.Id);
@@ -103,7 +103,7 @@ namespace Ledgance.Audit.Engagement.Application.Fieldwork {
             await _risks.UpdateAsync(risk, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "risk.reassessed",
-                "Risk", risk.Id, $"Risk '{risk.Title}' was reassessed ({risk.Level}).",
+                "Risk", risk.Id, $"reassessed the risk {risk.Title} as {risk.Level}.",
                 request.EngagementId), ct);
 
             return Result<bool>.Success(true);

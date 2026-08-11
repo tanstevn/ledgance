@@ -29,8 +29,8 @@ separate applications/repositories possible. Do not split them now.
 | Backend | C#, .NET 10, ASP.NET Core Web API |
 | Data | Supabase PostgreSQL via the official `Supabase` C# package |
 | Auth | Supabase Auth (JWT bearer validated server-side) |
-| Payments | Stripe (not yet implemented) |
-| AI | Ollama, OpenAI, Anthropic, OpenClaw (not yet implemented) |
+| Payments | Stripe via `Stripe.net`, behind `IBillingGateway` (Phase 9) |
+| AI | Ollama, OpenAI, Anthropic, OpenClaw, behind `IAiCompletionService` |
 | Frontend | Next.js App Router, React, TypeScript, Tailwind, shadcn/ui |
 | Tests | xUnit |
 
@@ -108,6 +108,11 @@ Registered pipeline, outermost first:
   exceptions; domain invariant violations throw `DomainRuleException` (→ HTTP 409).
 - **Handlers never call validators** — `ValidationBehavior` does.
 - Engagement-scoped handlers call `IEngagementAccessGuard.EnsureMemberAsync` first (ADR-017).
+- Activity summaries are **active-voice predicates** starting lowercase — `"approved the audit
+  plan for {engagement.Name}."`, never `"The audit plan was approved."` — because every reader
+  renders "You " / "<Name> " + summary as one sentence (ADR-024).
+- Reads that do not depend on each other run under one `Task.WhenAll`. Every Supabase query is a
+  network round trip, so sequential awaits are the main source of page latency.
 - Every module Application assembly needs a `MediatorAnchor` and an entry in
   `Ledgance.Api/DependencyInjection.cs`; module permissions register in the
   `AddLedganceSharedInfrastructure` callback.
@@ -162,6 +167,19 @@ Accounting — Free, Solo ($14.99/mo), Team, Professional, Enterprise. Enterpris
 - **Free plans must be genuinely useful.** Upgrade pressure comes from scale, depth and AI, never
   from blocking a core workflow midway.
 
+## Billing
+
+Stripe lives behind `IBillingGateway`/`IBillingWebhookVerifier`/`IBillingPriceReader`
+(Shared.Application/Billing); Stripe types appear only in `Shared.Infrastructure/Billing`.
+
+- **Webhooks are the source of truth** (ADR-007/ADR-023): the redirect back from checkout never
+  grants access. Signature verified before the payload is read, event ids recorded for
+  idempotency, older events ignored by timestamp.
+- Plan ↔ price mapping is configuration (`Stripe:Prices:<PlanCode>`, must be a `price_…` id).
+  A plan with no usable price is not purchasable, server-side. **Never hardcode an amount in
+  the frontend** — displayed prices are read back from Stripe.
+- Free and Enterprise never reach checkout: nothing to buy, and Enterprise is Contact Sales.
+
 ---
 
 ## AI
@@ -188,7 +206,11 @@ See `docs/ai-architecture.md` for what is implemented versus planned.
   `success`, `warning`, `chart-1..5`, `--radius`), not raw colour literals.
 - Call the API through `hooks/query.ts` + `util/http.ts`, which mirror the backend
   `Result<T>` / `PaginatedResult<T>` envelope and attach the Supabase bearer token.
-- Every data surface handles **loading, empty, error, populated**.
+- Every data surface handles **loading, empty, error, populated**. Route-level `loading.tsx`
+  gives navigation an instant response; without it the router holds the previous page.
+- Reuse the shared pieces in `components/workspace.tsx` (`FileDropZone`, `Pagination`,
+  `RecordAvatar`, `StatusPill`, `ProgressTrack`, `EmptyCard`, `ErrorCard`) rather than
+  re-implementing them per page.
 - `components/ui/**` is vendored upstream code and is lint-exempt; author new components in
   `components/`.
 - Only `NEXT_PUBLIC_*` values reach the browser. The service-role key must never appear here.

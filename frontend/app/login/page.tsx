@@ -36,7 +36,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      toast.success("Welcome back!");
       router.push("/dashboard");
     } catch (error) {
       toast.error(
@@ -45,7 +44,8 @@ export default function LoginPage() {
           : "Something went wrong. Please try again.",
       );
     } finally {
-      setLoading(false);
+      toast.success("Welcome back!");
+      // setLoading(false);
     }
   };
 
@@ -213,8 +213,8 @@ export default function LoginPage() {
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 If an account exists for{" "}
-                <span className="font-medium text-foreground">{email}</span>,
-                a password reset link is on its way.
+                <span className="font-medium text-foreground">{email}</span>, a
+                password reset link is on its way.
               </p>
               <Button
                 variant="outline"
@@ -255,7 +255,10 @@ export default function LoginPage() {
                 "AI assistance that proposes — you decide",
                 "One organization, your choice of platforms",
               ].map((item) => (
-                <div key={item} className="flex items-center gap-3 text-white/90">
+                <div
+                  key={item}
+                  className="flex items-center gap-3 text-white/90"
+                >
                   <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-white" />
                   <span className="text-sm">{item}</span>
                 </div>

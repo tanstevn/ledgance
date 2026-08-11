@@ -29,8 +29,20 @@ namespace Ledgance.Audit.Unit.Tests.Support {
                 .ToList());
 
         public Task<ClientPage> ListPageAsync(int page, int pageSize, string? search,
-            CancellationToken ct) =>
-            Task.FromResult(new ClientPage(Clients, Clients.Count));
+            CancellationToken ct) {
+            var matching = Clients
+                .Where(client => string.IsNullOrWhiteSpace(search)
+                    || client.Name.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase))
+                .OrderBy(client => client.Name)
+                .ToList();
+
+            var rows = matching
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Task.FromResult(new ClientPage(rows, matching.Count));
+        }
 
         public Task<long> CountActiveAsync(CancellationToken ct) =>
             Task.FromResult((long)Clients.Count(client => !client.IsArchived));
@@ -44,6 +56,25 @@ namespace Ledgance.Audit.Unit.Tests.Support {
             Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Stands in for the Engagement module's counter, which the Client feature only knows
+    /// through its own port.
+    /// </summary>
+    public sealed class InMemoryClientEngagementCounter : IClientEngagementCounter {
+        public Dictionary<Guid, ClientEngagementCounts> Counts { get; } = [];
+
+        public Task<int> CountActiveEngagementsAsync(Guid clientId, CancellationToken ct) =>
+            Task.FromResult(Counts.GetValueOrDefault(clientId,
+                new ClientEngagementCounts(0, 0)).Active);
+
+        public Task<IReadOnlyDictionary<Guid, ClientEngagementCounts>> CountForClientsAsync(
+            IEnumerable<Guid> clientIds, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, ClientEngagementCounts>>(clientIds
+                .Distinct()
+                .Where(Counts.ContainsKey)
+                .ToDictionary(id => id, id => Counts[id]));
+    }
+
     public sealed class InMemoryEngagementRepository : IEngagementRepository {
         public List<DomainEngagement> Engagements { get; } = [];
 
@@ -55,6 +86,25 @@ namespace Ledgance.Audit.Unit.Tests.Support {
             Task.FromResult<IReadOnlyList<DomainEngagement>>(Engagements
                 .Where(engagement => clientId is null || engagement.ClientId == clientId)
                 .ToList());
+
+        public Task<EngagementPage> ListPageAsync(Guid? clientId, EngagementStatus? status,
+            string? search, int page, int pageSize, CancellationToken ct) {
+            var matching = Engagements
+                .Where(engagement => clientId is null || engagement.ClientId == clientId)
+                .Where(engagement => status is null || engagement.Status == status)
+                .Where(engagement => string.IsNullOrWhiteSpace(search)
+                    || engagement.Name.Contains(search.Trim(),
+                        StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(engagement => engagement.CreatedAt)
+                .ToList();
+
+            var rows = matching
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Task.FromResult(new EngagementPage(rows, matching.Count));
+        }
 
         public Task<long> CountActiveAsync(CancellationToken ct) =>
             Task.FromResult((long)Engagements.Count(engagement => engagement.IsActive));

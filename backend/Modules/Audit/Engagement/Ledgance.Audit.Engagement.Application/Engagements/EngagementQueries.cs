@@ -58,6 +58,65 @@ namespace Ledgance.Audit.Engagement.Application.Engagements {
         }
     }
 
+    /// <summary>
+    /// The engagement list the workspace pages through: one page of records plus the totals the
+    /// UI needs to render numbered pages, filtered server-side by status and client.
+    /// </summary>
+    [RequiresPermission(AuditEngagementPermissions.Read)]
+    public class GetPaginatedEngagementsQuery : PaginatedRequest<EngagementListRow> {
+        public Guid? ClientId { get; set; }
+        public EngagementStatus? Status { get; set; }
+    }
+
+    public class GetPaginatedEngagementsQueryHandler
+        : IRequestHandler<GetPaginatedEngagementsQuery, PaginatedResult<EngagementListRow>> {
+        private readonly IEngagementRepository _engagements;
+        private readonly IClientLookup _clients;
+
+        public GetPaginatedEngagementsQueryHandler(IEngagementRepository engagements,
+            IClientLookup clients) {
+            _engagements = engagements;
+            _clients = clients;
+        }
+
+        public async Task<PaginatedResult<EngagementListRow>> HandleAsync(
+            GetPaginatedEngagementsQuery request, CancellationToken ct) {
+            var page = Math.Max(1, request.Page);
+            var pageSize = Math.Clamp(request.PageSize, 1, 100);
+
+            var result = await _engagements.ListPageAsync(request.ClientId, request.Status,
+                request.SearchValue, page, pageSize, ct);
+
+            var names = await _clients.GetNamesAsync(
+                result.Rows.Select(engagement => engagement.ClientId).Distinct(), ct);
+
+            var rows = result.Rows
+                .Select(engagement => new EngagementListRow {
+                    Id = engagement.Id,
+                    ClientId = engagement.ClientId,
+                    ClientName = names.GetValueOrDefault(engagement.ClientId, string.Empty),
+                    Name = engagement.Name,
+                    Type = engagement.Type.ToString(),
+                    Status = engagement.Status.ToString(),
+                    PeriodStart = engagement.PeriodStart,
+                    PeriodEnd = engagement.PeriodEnd,
+                    BudgetHours = engagement.BudgetHours,
+                    CreatedAt = engagement.CreatedAt
+                })
+                .ToList();
+
+            return new PaginatedResult<EngagementListRow> {
+                Successful = true,
+                Data = rows,
+                PageNumber = page,
+                ItemsPerPage = pageSize,
+                ResultsCount = rows.Count,
+                TotalResultsCount = (int)result.TotalCount,
+                TotalPages = (int)Math.Ceiling(result.TotalCount / (decimal)pageSize)
+            };
+        }
+    }
+
     [RequiresPermission(AuditEngagementPermissions.Read)]
     public class GetEngagementByIdQuery : IQuery<Result<EngagementDetail>> {
         public Guid Id { get; set; }
@@ -154,12 +213,20 @@ namespace Ledgance.Audit.Engagement.Application.Engagements {
                 return Result<EngagementDetail>.Error("Engagement was not found.");
             }
 
-            var team = await _team.ListAsync(engagement.Id, ct);
-            var names = await _clients.GetNamesAsync([engagement.ClientId], ct);
-            var progress = await _progress.GetAsync(engagement.Id, ct);
-            var members = await _directory.ListMembersAsync(
+            // Independent reads resolved together — this query answers the engagement
+            // workspace's first paint, so its latency is the page's latency.
+            var teamTask = _team.ListAsync(engagement.Id, ct);
+            var namesTask = _clients.GetNamesAsync([engagement.ClientId], ct);
+            var progressTask = _progress.GetAsync(engagement.Id, ct);
+            var membersTask = _directory.ListMembersAsync(
                 _currentUser.RequireOrganizationId(), ct);
-            var membersByUser = members.ToDictionary(m => m.UserId);
+
+            await Task.WhenAll(teamTask, namesTask, progressTask, membersTask);
+
+            var team = teamTask.Result;
+            var names = namesTask.Result;
+            var progress = progressTask.Result;
+            var membersByUser = membersTask.Result.ToDictionary(m => m.UserId);
 
             return Result<EngagementDetail>.Success(new EngagementDetail {
                 Id = engagement.Id,

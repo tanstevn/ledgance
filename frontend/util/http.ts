@@ -15,12 +15,12 @@ const authorizationHeader = async (): Promise<Record<string, string>> => {
 };
 
 const serializeQueryParamsFromObject = function (
-  paramsObject: any,
+  paramsObject: Record<string, unknown>,
   path?: string,
 ): string[] {
-  var str = new Array<string>();
+  const str = new Array<string>();
 
-  for (var objectProperty of Object.keys(paramsObject)) {
+  for (const objectProperty of Object.keys(paramsObject)) {
     const value = paramsObject[objectProperty];
 
     let propPath = objectProperty;
@@ -40,14 +40,23 @@ const serializeQueryParamsFromObject = function (
     } else if (Array.isArray(value)) {
       if (value.length !== 0) {
         const key = encodeURIComponent(propPath);
-        const arrayParams = value.map((x) => `${key}=${encodeURIComponent(x)}`);
+        const arrayParams = value.map(
+          (x) => `${key}=${encodeURIComponent(String(x))}`,
+        );
         const joinedParams = arrayParams.join("&");
         str.push(joinedParams);
       }
     } else if (typeof value === "object") {
-      str.push(...serializeQueryParamsFromObject(value, propPath));
+      str.push(
+        ...serializeQueryParamsFromObject(
+          value as Record<string, unknown>,
+          propPath,
+        ),
+      );
     } else {
-      str.push(`${encodeURIComponent(propPath)}=${encodeURIComponent(value)}`);
+      str.push(
+        `${encodeURIComponent(propPath)}=${encodeURIComponent(String(value))}`,
+      );
     }
   }
 
@@ -55,10 +64,10 @@ const serializeQueryParamsFromObject = function (
 };
 
 const common = async (
-  method: any,
+  method: string,
   url: string,
-  body?: any,
-  queryParams?: any,
+  body?: unknown,
+  queryParams?: Record<string, unknown>,
 ) => {
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -92,21 +101,50 @@ const common = async (
     // The API returns the same Result envelope for failures, so surface its messages.
     const errors = payload?.errors;
 
-    return Promise.reject(
-      (Array.isArray(errors) && errors.length > 0
+    const messages = (
+      Array.isArray(errors) && errors.length > 0
         ? errors
-        : [`Request failed with status ${response.status}.`]) as ResultErrors,
-    );
+        : [`Request failed with status ${response.status}.`]
+    ) as ResultErrors;
+
+    notifyEntitlementRequired(response.status, messages);
+
+    return Promise.reject(messages);
   }
 
   return payload;
 };
 
-const get = async <T>(url: string, queryParams?: any): Promise<T> =>
-  common("GET", url, undefined, queryParams);
+/** The event an entitlement refusal raises, so the shell can offer an upgrade. */
+export const entitlementRequiredEvent = "ledgance:entitlement-required";
+
+/**
+ * HTTP 402 means the server refused for want of a plan, not for want of a permission. The
+ * refusal is broadcast so one listener can offer the upgrade path, instead of every caller
+ * having to recognise it.
+ */
+const notifyEntitlementRequired = (status: number, messages: ResultErrors) => {
+  if (status !== 402 || typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<{ message: string }>(entitlementRequiredEvent, {
+      detail: { message: messages.join(" ") },
+    }),
+  );
+};
+
+const get = async <T>(
+  url: string,
+  queryParams?: Record<string, unknown>,
+): Promise<T> => common("GET", url, undefined, queryParams);
 
 /** Multipart upload — the browser sets the Content-Type boundary itself. */
-const postForm = async <T = any>(url: string, form: FormData): Promise<T> => {
+const postForm = async <T = unknown>(
+  url: string,
+  form: FormData,
+): Promise<T> => {
   const headers: Record<string, string> = {
     Accept: "application/json",
     ...(await authorizationHeader()),
@@ -135,13 +173,13 @@ const postForm = async <T = any>(url: string, form: FormData): Promise<T> => {
   return payload;
 };
 
-const post = async <T = any>(url: string, body: any): Promise<T> =>
+const post = async <T = unknown>(url: string, body: unknown): Promise<T> =>
   common("POST", url, body);
 
-const del = async <T = any>(url: any, body: any): Promise<T> =>
+const del = async <T = unknown>(url: string, body: unknown): Promise<T> =>
   common("DELETE", url, body);
 
-const put = async <T = any>(url: any, body: any): Promise<T> =>
+const put = async <T = unknown>(url: string, body: unknown): Promise<T> =>
   common("PUT", url, body);
 
 export { get, post, postForm, del, put };

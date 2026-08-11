@@ -61,7 +61,7 @@ namespace Ledgance.Audit.Engagement.Application.Team {
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "engagement.team_assigned",
                 "Engagement", request.EngagementId,
-                $"{member.DisplayName} was assigned as {request.Role}.",
+                $"assigned {member.DisplayName} to the engagement as {request.Role}.",
                 request.EngagementId), ct);
 
             return Result<Guid>.Success(assignment.Id);
@@ -104,7 +104,7 @@ namespace Ledgance.Audit.Engagement.Application.Team {
             await _team.RemoveAsync(request.MemberId, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "engagement.team_removed",
-                "Engagement", request.EngagementId, "A team member was removed.",
+                "Engagement", request.EngagementId, "removed a team member from the engagement.",
                 request.EngagementId), ct);
 
             return Result<bool>.Success(true);

@@ -3,9 +3,13 @@ using DomainEngagement = Ledgance.Audit.Engagement.Domain.Engagement;
 using DomainEvidence = Ledgance.Audit.Engagement.Domain.Evidence;
 
 namespace Ledgance.Audit.Engagement.Application.Ports {
+    public sealed record EngagementPage(IReadOnlyList<DomainEngagement> Rows, long TotalCount);
+
     public interface IEngagementRepository {
         Task<DomainEngagement?> FindAsync(Guid id, CancellationToken ct);
         Task<IReadOnlyList<DomainEngagement>> ListAsync(Guid? clientId, CancellationToken ct);
+        Task<EngagementPage> ListPageAsync(Guid? clientId, EngagementStatus? status,
+            string? search, int page, int pageSize, CancellationToken ct);
         Task<long> CountActiveAsync(CancellationToken ct);
         Task AddAsync(DomainEngagement engagement, CancellationToken ct);
         Task UpdateAsync(DomainEngagement engagement, CancellationToken ct);
@@ -43,6 +47,8 @@ namespace Ledgance.Audit.Engagement.Application.Ports {
     public interface IEvidenceRepository {
         Task<DomainEvidence?> FindAsync(Guid id, CancellationToken ct);
         Task<IReadOnlyList<DomainEvidence>> ListAsync(Guid engagementId, CancellationToken ct);
+        Task<DomainEvidence?> FindByFileNameAsync(Guid engagementId, string fileName,
+            CancellationToken ct);
         Task<long> SumSizeBytesAsync(CancellationToken ct);
         Task AddAsync(DomainEvidence evidence, CancellationToken ct);
         Task UpdateAsync(DomainEvidence evidence, CancellationToken ct);

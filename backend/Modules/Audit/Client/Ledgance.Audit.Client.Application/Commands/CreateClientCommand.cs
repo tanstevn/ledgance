@@ -68,7 +68,7 @@ namespace Ledgance.Audit.Client.Application.Commands {
             await _clients.AddAsync(client, ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "client.created",
-                "Client", client.Id, $"Client '{client.Name}' was created."), ct);
+                "Client", client.Id, $"created the client {client.Name}."), ct);
 
             return Result<CreateClientCommandResult>
                 .Success(new CreateClientCommandResult { Id = client.Id });

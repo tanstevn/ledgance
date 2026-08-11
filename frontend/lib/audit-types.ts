@@ -11,6 +11,20 @@ export interface ClientRow {
   createdAt: string;
 }
 
+/** Row of `GET /api/audit/clients/paged` — the card grid's shape. */
+export interface ClientCardRow {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  industry: string;
+  contactName: string;
+  website: string | null;
+  isArchived: boolean;
+  activeEngagements: number;
+  totalEngagements: number;
+}
+
 export interface EngagementListRow {
   id: string;
   clientId: string;
@@ -49,11 +63,22 @@ export interface TeamMemberView {
   role: string;
 }
 
+/** The stage-gate snapshot the engagement aggregate uses for status transitions. */
+export interface ProgressView {
+  openProcedures: number;
+  unapprovedWorkingPapers: number;
+  openReviewNotes: number;
+  openFindings: number;
+  unaddressedHighRisks: number;
+  reportFinalized: boolean;
+}
+
 export interface EngagementDetail extends EngagementListRow {
   fiscalYearEnd: string | null;
   plan: PlanView | null;
   materiality: MaterialityView | null;
   team: TeamMemberView[];
+  progress: ProgressView;
 }
 
 export interface RiskRow {
@@ -104,6 +129,15 @@ export interface FindingRow {
   raisedAt: string;
 }
 
+export interface EvidenceVersionRow {
+  version: number;
+  sizeBytes: number;
+  contentType: string;
+  note: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
 export interface EvidenceRow {
   id: string;
   workingPaperId: string | null;
@@ -113,9 +147,20 @@ export interface EvidenceRow {
   sizeBytes: number;
   version: number;
   description: string;
+  category: string;
+  tags: string[];
+  /** Every retained version, newest first — the current one included. */
+  versions: EvidenceVersionRow[];
   uploadedBy: string;
   uploadedAt: string;
 }
+
+export const evidenceCategories = [
+  "Evidence",
+  "Financial",
+  "Correspondence",
+  "Supporting",
+] as const;
 
 export interface TrialBalanceLineView {
   accountCode: string;

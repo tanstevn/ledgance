@@ -74,7 +74,7 @@ namespace Ledgance.Accounting.AI.Application.Assistant {
             if (request.EntityId is not null) {
                 await _activity.RecordAsync(new ActivityEntry("Accounting", "ai.assistant",
                     "Entity", request.EntityId.Value,
-                    "The AI assistant answered an entity question.", request.EntityId), ct);
+                    "asked the AI assistant about these books.", request.EntityId), ct);
             }
 
             return Result<AiProposalResult>.Success(
@@ -138,7 +138,7 @@ namespace Ledgance.Accounting.AI.Application.Assistant {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "ai.entry_explanation", "JournalEntry", entry.Id,
-                $"An AI explanation of entry #{entry.EntryNumber} was generated.",
+                $"generated an AI explanation of journal entry #{entry.EntryNumber}.",
                 request.EntityId), ct);
 
             return Result<AiProposalResult>.Success(
@@ -213,7 +213,7 @@ namespace Ledgance.Accounting.AI.Application.Assistant {
 
             await _activity.RecordAsync(new ActivityEntry("Accounting",
                 "ai.financial_summary", "FiscalPeriod", period.Id,
-                $"An AI financial summary of '{period.Name}' was generated.",
+                $"generated an AI financial summary of {period.Name}.",
                 request.EntityId), ct);
 
             return Result<AiProposalResult>.Success(

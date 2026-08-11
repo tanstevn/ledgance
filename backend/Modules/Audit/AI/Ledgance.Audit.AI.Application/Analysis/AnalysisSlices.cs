@@ -94,7 +94,7 @@ namespace Ledgance.Audit.AI.Application.Analysis {
                 "balance and materiality, whether each significant risk has an adequate " +
                 "response, and where the risk assessment and the numbers disagree.",
                 "Analyze this engagement's risk assessment.",
-                context, "ai.risk_analysis", "An AI risk analysis was generated.", ct);
+                context, "ai.risk_analysis", "generated an AI risk analysis.", ct);
         }
     }
 
@@ -210,7 +210,7 @@ namespace Ledgance.Audit.AI.Application.Analysis {
                 "review notes, and inconsistencies between working papers, findings and the " +
                 "plan. Produce a prioritized review checklist.",
                 "Review this engagement's completeness and quality.",
-                context, "ai.review_assistance", "An AI review assessment was generated.", ct);
+                context, "ai.review_assistance", "generated an AI review assessment.", ct);
         }
     }
 
@@ -256,7 +256,7 @@ namespace Ledgance.Audit.AI.Application.Analysis {
                 "engagement partner with [PARTNER JUDGMENT]. The draft is a starting point " +
                 "for the partner, not an opinion.",
                 "Draft the audit report for this engagement.",
-                context, "ai.report_draft", "An AI audit report draft was generated.", ct);
+                context, "ai.report_draft", "generated an AI audit report draft.", ct);
         }
     }
 }

@@ -1,6 +1,17 @@
 "use client";
 
-import { AlertCircle, ChevronDown, RefreshCw, type LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  RefreshCw,
+  UploadCloud,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -128,6 +139,369 @@ export function StatCard({
       <Icon className={cn("h-5 w-5", accent)} />
       <div className="mt-3 font-display text-2xl font-bold">{value}</div>
       <div className="mt-0.5 text-xs text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+const avatarTones = [
+  "bg-chart-1 text-white",
+  "bg-chart-2 text-white",
+  "bg-chart-3 text-white",
+  "bg-chart-5 text-white",
+  "bg-chart-4 text-white",
+];
+
+/**
+ * Identity tile for a record card. The tone is derived from the name so the same client or
+ * entity keeps its colour across pages without storing one.
+ */
+export function RecordAvatar({
+  name,
+  className,
+}: {
+  name: string;
+  className?: string;
+}) {
+  const seed = [...name].reduce((total, char) => total + char.charCodeAt(0), 0);
+
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-base font-bold",
+        avatarTones[seed % avatarTones.length],
+        className,
+      )}
+    >
+      {name.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}
+
+/** Initials bubble for a person, used in the stacked team avatars on list rows. */
+export function MemberAvatar({ name }: { name: string }) {
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <span
+      title={name}
+      className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold text-foreground"
+    >
+      {initials || "?"}
+    </span>
+  );
+}
+
+export function ProgressTrack({
+  value,
+  max,
+  className,
+  tone = "bg-primary",
+}: {
+  value: number;
+  max: number;
+  className?: string;
+  tone?: string;
+}) {
+  const percent = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+
+  return (
+    <div
+      className={cn("h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
+      role="progressbar"
+      aria-valuenow={percent}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
+      <div className={cn("h-full rounded-full", tone)} style={{ width: `${percent}%` }} />
+    </div>
+  );
+}
+
+/** Page numbers with ellipsis — always shows the first, last and the window around current. */
+function pageWindow(current: number, total: number): (number | "gap")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1);
+  }
+
+  const pages = new Set<number>([1, total, current]);
+
+  for (const offset of [-1, 1]) {
+    const page = current + offset;
+    if (page > 1 && page < total) pages.add(page);
+  }
+
+  if (current <= 3) [2, 3, 4].forEach((page) => pages.add(page));
+  if (current >= total - 2)
+    [total - 3, total - 2, total - 1].forEach((page) => pages.add(page));
+
+  const ordered = [...pages].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
+
+  return ordered.flatMap((page, index) =>
+    index > 0 && page - ordered[index - 1] > 1 ? ["gap" as const, page] : [page],
+  );
+}
+
+export function Pagination({
+  page,
+  totalPages,
+  totalResults,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalResults?: number;
+  onChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) {
+    return totalResults ? (
+      <p className="text-xs text-muted-foreground">
+        {totalResults} {totalResults === 1 ? "record" : "records"}
+      </p>
+    ) : null;
+  }
+
+  return (
+    <nav
+      aria-label="Pagination"
+      className="flex flex-wrap items-center justify-between gap-3"
+    >
+      <p className="text-xs text-muted-foreground">
+        Page {page} of {totalPages}
+        {totalResults !== undefined && ` · ${totalResults} records`}
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          aria-label="Previous page"
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        {pageWindow(page, totalPages).map((entry, index) =>
+          entry === "gap" ? (
+            <span
+              key={`gap-${index}`}
+              className="px-1.5 text-sm text-muted-foreground"
+              aria-hidden
+            >
+              …
+            </span>
+          ) : (
+            <Button
+              key={entry}
+              variant={entry === page ? "default" : "outline"}
+              size="icon"
+              className="h-8 w-8 text-sm font-semibold"
+              aria-label={`Page ${entry}`}
+              aria-current={entry === page ? "page" : undefined}
+              onClick={() => onChange(entry)}
+            >
+              {entry}
+            </Button>
+          ),
+        )}
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          aria-label="Next page"
+          disabled={page >= totalPages}
+          onClick={() => onChange(page + 1)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </nav>
+  );
+}
+
+/**
+ * Fires once the sentinel scrolls into view — the trigger that asks the API for the next page
+ * of cards. Rendered only while another page exists.
+ */
+export function InfiniteScrollSentinel({
+  onReach,
+  disabled,
+}: {
+  onReach: () => void;
+  disabled?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const callback = useRef(onReach);
+
+  useEffect(() => {
+    callback.current = onReach;
+  }, [onReach]);
+
+  useEffect(() => {
+    const element = ref.current;
+
+    if (!element || disabled) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          callback.current();
+        }
+      },
+      { rootMargin: "240px" },
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [disabled]);
+
+  return <div ref={ref} aria-hidden className="h-px w-full" />;
+}
+
+/**
+ * File picker: a drop target that is also clickable and keyboard-operable. Selected files
+ * list as chips beneath the zone, each individually removable, so what will be sent is
+ * unambiguous. Dropping or browsing again adds to the selection (duplicates by name+size
+ * are ignored).
+ */
+export function FileDropZone({
+  files,
+  onSelect,
+  disabled,
+  single,
+}: {
+  files: File[];
+  onSelect: (files: File[]) => void;
+  disabled?: boolean;
+  /** Accept exactly one file: a new drop or browse replaces the current selection. */
+  single?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const browse = () => inputRef.current?.click();
+
+  const add = (incoming: FileList | null) => {
+    if (!incoming || incoming.length === 0) return;
+
+    if (single) {
+      onSelect([incoming[0]]);
+      return;
+    }
+
+    const merged = [...files];
+
+    for (const file of incoming) {
+      if (!merged.some((f) => f.name === file.name && f.size === file.size)) {
+        merged.push(file);
+      }
+    }
+
+    onSelect(merged);
+  };
+
+  return (
+    <div className="space-y-2.5">
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-label={
+          single
+            ? "Drag and drop a file here, or browse"
+            : "Drag and drop files here, or browse"
+        }
+        onClick={browse}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            browse();
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!disabled) setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          if (!disabled) add(e.dataTransfer.files);
+        }}
+        className={cn(
+          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          files.length > 0 ? "py-6" : "py-10",
+          dragging
+            ? "border-primary/60 bg-primary/5"
+            : "border-border hover:border-primary/40 hover:bg-muted/30",
+          disabled && "pointer-events-none opacity-50",
+        )}
+      >
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <UploadCloud className="h-6 w-6" />
+        </span>
+        <div>
+          <p className="font-display text-sm font-semibold">
+            {single ? "Drag and drop a file here" : "Drag and drop files here"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">or</p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          className="font-semibold"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation();
+            browse();
+          }}
+        >
+          Browse files
+        </Button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple={!single}
+          className="hidden"
+          onChange={(e) => {
+            add(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      {files.map((file) => (
+        <div
+          key={`${file.name}-${file.size}`}
+          className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <FileText className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{file.name}</p>
+            <p className="text-xs text-muted-foreground">{fmtBytes(file.size)}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            aria-label={`Remove ${file.name}`}
+            disabled={disabled}
+            onClick={() => onSelect(files.filter((f) => f !== file))}
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </div>
+      ))}
     </div>
   );
 }

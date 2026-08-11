@@ -21,26 +21,19 @@ import { CrossSellCard } from "@/components/cross-sell";
 import { StatCard, StatusPill, fmtDate } from "@/components/workspace";
 import { useAuth } from "@/components/auth-context";
 import { useApiQuery } from "@/hooks/query";
-import { isPlatformEnabled, useSession, type Session } from "@/hooks/session";
+import { isPlatformEnabled, useSession } from "@/hooks/session";
 import { planPresentation } from "@/lib/plans";
+import {
+  activityActor,
+  activityInitials,
+  relativeTime,
+} from "@/lib/activity";
 import type {
   ActivityRow,
   ClientRow,
   EngagementListRow,
 } from "@/lib/audit-types";
 import type { EntityRow } from "@/lib/accounting-types";
-
-const timeAgo = (value: string) => {
-  const diffMs = Date.now() - new Date(value).getTime();
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(value).toLocaleDateString();
-};
 
 const daysUntil = (dateOnly: string) =>
   Math.ceil(
@@ -70,17 +63,6 @@ function DeadlineChip({ date }: { date: string }) {
     </span>
   );
 }
-
-/** The signed-in user reads as "You"; everyone else by the human part of their email. */
-const actorLabel = (entry: ActivityRow, session: Session | undefined) =>
-  session && entry.actorUserId === session.userId
-    ? "You"
-    : (entry.actorEmail.split("@")[0] || "Someone").replace(/[._-]+/g, " ");
-
-const actorInitials = (entry: ActivityRow, session: Session | undefined) =>
-  session && entry.actorUserId === session.userId
-    ? "You"
-    : (entry.actorEmail[0] ?? "?").toUpperCase();
 
 function ActivityFeed({
   url,
@@ -123,18 +105,18 @@ function ActivityFeed({
         <div key={entry.id} className="flex items-start gap-3">
           <Avatar className="h-7 w-7 flex-shrink-0">
             <AvatarFallback className="bg-muted text-[10px] font-semibold text-muted-foreground">
-              {actorInitials(entry, session)}
+              {activityInitials(entry, session)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="text-sm leading-snug">
-              <span className="font-semibold capitalize">
-                {actorLabel(entry, session)}
+              <span className="font-semibold">
+                {activityActor(entry, session)}
               </span>{" "}
               <span className="text-muted-foreground">{entry.summary}</span>
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground/70">
-              {timeAgo(entry.occurredAt)}
+              {relativeTime(entry.occurredAt)}
             </p>
           </div>
         </div>

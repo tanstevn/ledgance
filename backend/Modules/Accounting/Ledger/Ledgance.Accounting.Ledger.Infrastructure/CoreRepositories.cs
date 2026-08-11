@@ -24,6 +24,29 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
             return rows.Models.Select(ToDomain).ToList();
         }
 
+        public async Task<EntityPage> ListPageAsync(int page, int pageSize, string? search,
+            CancellationToken ct) {
+            var query = _repository.Query();
+            var countQuery = _repository.Query();
+
+            if (!string.IsNullOrWhiteSpace(search)) {
+                var pattern = $"%{search.Trim()}%";
+                query = query.Filter("name", Constants.Operator.ILike, pattern);
+                countQuery = countQuery.Filter("name", Constants.Operator.ILike, pattern);
+            }
+
+            var from = (page - 1) * pageSize;
+
+            var rows = await query
+                .Order("name", Constants.Ordering.Ascending)
+                .Range(from, from + pageSize - 1)
+                .Get(ct);
+
+            var total = await countQuery.Count(Constants.CountType.Exact, ct);
+
+            return new EntityPage(rows.Models.Select(ToDomain).ToList(), total);
+        }
+
         public async Task<long> CountActiveAsync(CancellationToken ct) =>
             await _repository.Query()
                 .Filter("is_archived", Constants.Operator.Equals, "false")
@@ -159,6 +182,27 @@ namespace Ledgance.Accounting.Ledger.Infrastructure {
 
             var model = rows.Models.FirstOrDefault();
             return model is null ? null : ToDomain(model);
+        }
+
+        public async Task<IReadOnlyDictionary<Guid, EntityPeriodCounts>> CountByEntitiesAsync(
+            IEnumerable<Guid> entityIds, CancellationToken ct) {
+            var ids = entityIds.Distinct().ToList();
+
+            if (ids.Count == 0) {
+                return new Dictionary<Guid, EntityPeriodCounts>();
+            }
+
+            var rows = await _repository.Query()
+                .Filter("entity_id", Constants.Operator.In, ids.Select(id => id.ToString()).ToList())
+                .Get(ct);
+
+            return rows.Models
+                .GroupBy(period => period.EntityId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new EntityPeriodCounts(
+                        group.Count(period => period.Status == nameof(FiscalPeriodStatus.Open)),
+                        group.Count()));
         }
 
         public async Task<bool> AnyOpenAsync(Guid entityId, CancellationToken ct) =>

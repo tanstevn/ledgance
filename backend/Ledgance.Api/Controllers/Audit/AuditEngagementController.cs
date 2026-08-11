@@ -26,6 +26,11 @@ namespace Ledgance.Api.Controllers.Audit {
             [FromQuery] Guid? clientId, CancellationToken ct)
             => await _mediator.SendAsync(new GetEngagementsQuery { ClientId = clientId }, ct);
 
+        [HttpGet("paged")]
+        public async Task<PaginatedResult<EngagementListRow>> ListPaged(
+            [FromQuery] GetPaginatedEngagementsQuery query, CancellationToken ct)
+            => await _mediator.SendAsync(query, ct);
+
         [HttpGet("{id:guid}")]
         public async Task<Result<EngagementDetail>> GetById(Guid id, CancellationToken ct)
             => await _mediator.SendAsync(new GetEngagementByIdQuery { Id = id }, ct);

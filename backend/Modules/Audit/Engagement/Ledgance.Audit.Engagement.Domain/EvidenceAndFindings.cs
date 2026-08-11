@@ -1,7 +1,25 @@
 using Ledgance.Shared.Application.Exceptions;
 
 namespace Ledgance.Audit.Engagement.Domain {
+    public enum EvidenceCategory { Evidence, Financial, Correspondence, Supporting }
+
+    /// <summary>
+    /// One retained version of an evidence file. Prior versions stay addressable — an auditor
+    /// must be able to show what a paper referenced at the time, not only the latest file.
+    /// </summary>
+    public sealed record EvidenceVersion(
+        int Version,
+        string StoragePath,
+        long SizeBytes,
+        string ContentType,
+        string Note,
+        Guid UploadedBy,
+        DateTime UploadedAt);
+
     public sealed class Evidence {
+        private readonly List<EvidenceVersion> _priorVersions = [];
+        private readonly List<string> _tags = [];
+
         private Evidence() { }
 
         public Guid Id { get; private set; }
@@ -14,19 +32,32 @@ namespace Ledgance.Audit.Engagement.Domain {
         public string StoragePath { get; private set; } = string.Empty;
         public int Version { get; private set; }
         public string Description { get; private set; } = string.Empty;
+        public EvidenceCategory Category { get; private set; }
+        public IReadOnlyList<string> Tags => _tags;
         public Guid UploadedBy { get; private set; }
         public DateTime UploadedAt { get; private set; }
 
+        /// <summary>Superseded versions, oldest first. The current version lives on the entity.</summary>
+        public IReadOnlyList<EvidenceVersion> PriorVersions => _priorVersions;
+
+        /// <summary>Every version newest first — the shape a version history renders.</summary>
+        public IReadOnlyList<EvidenceVersion> AllVersions() =>
+            [.. _priorVersions
+                .Append(new EvidenceVersion(Version, StoragePath, SizeBytes, ContentType,
+                    Description, UploadedBy, UploadedAt))
+                .OrderByDescending(version => version.Version)];
+
         public static Evidence Upload(Guid engagementId, Guid? workingPaperId,
             Guid? procedureId, string fileName, string contentType, long sizeBytes,
-            string storagePath, string description, Guid uploadedBy) {
+            string storagePath, string description, EvidenceCategory category,
+            IEnumerable<string> tags, Guid uploadedBy) {
             ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
 
             if (sizeBytes <= 0) {
                 throw new DomainRuleException("Evidence must contain file content.");
             }
 
-            return new Evidence {
+            var evidence = new Evidence {
                 Id = Guid.NewGuid(),
                 EngagementId = engagementId,
                 WorkingPaperId = workingPaperId,
@@ -37,16 +68,21 @@ namespace Ledgance.Audit.Engagement.Domain {
                 StoragePath = storagePath,
                 Version = 1,
                 Description = description.Trim(),
+                Category = category,
                 UploadedBy = uploadedBy,
                 UploadedAt = DateTime.UtcNow
             };
+
+            evidence.SetTags(tags);
+            return evidence;
         }
 
         public static Evidence Restore(Guid id, Guid engagementId, Guid? workingPaperId,
             Guid? procedureId, string fileName, string contentType, long sizeBytes,
-            string storagePath, int version, string description, Guid uploadedBy,
-            DateTime uploadedAt) =>
-            new() {
+            string storagePath, int version, string description, EvidenceCategory category,
+            IEnumerable<string> tags, IEnumerable<EvidenceVersion> priorVersions,
+            Guid uploadedBy, DateTime uploadedAt) {
+            var evidence = new Evidence {
                 Id = id,
                 EngagementId = engagementId,
                 WorkingPaperId = workingPaperId,
@@ -57,27 +93,48 @@ namespace Ledgance.Audit.Engagement.Domain {
                 StoragePath = storagePath,
                 Version = version,
                 Description = description,
+                Category = category,
                 UploadedBy = uploadedBy,
                 UploadedAt = uploadedAt
             };
 
+            evidence._tags.AddRange(tags);
+            evidence._priorVersions.AddRange(priorVersions);
+            return evidence;
+        }
+
         /// <summary>
         /// Superseding keeps the same evidence identity while pointing at new file content, so
-        /// references from papers and findings stay valid across versions.
+        /// references from papers and findings stay valid across versions. The outgoing
+        /// version is retained, never overwritten — the trail must show what each version said.
         /// </summary>
         public void Supersede(string storagePath, long sizeBytes, string contentType,
-            Guid uploadedBy) {
+            string note, Guid uploadedBy) {
             if (sizeBytes <= 0) {
                 throw new DomainRuleException("Evidence must contain file content.");
             }
+
+            _priorVersions.Add(new EvidenceVersion(Version, StoragePath, SizeBytes,
+                ContentType, Description, UploadedBy, UploadedAt));
 
             StoragePath = storagePath;
             SizeBytes = sizeBytes;
             ContentType = contentType;
             Version++;
+            Description = note.Trim();
             UploadedBy = uploadedBy;
             UploadedAt = DateTime.UtcNow;
         }
+
+        public EvidenceVersion? FindVersion(int version) =>
+            AllVersions().FirstOrDefault(entry => entry.Version == version);
+
+        private void SetTags(IEnumerable<string> tags) =>
+            _tags.AddRange(tags
+                .Select(tag => tag.Trim().ToLowerInvariant())
+                .Where(tag => tag.Length > 0)
+                .Distinct()
+                .Take(10));
     }
 
     public enum FindingSeverity { Low, Medium, High, Critical }
