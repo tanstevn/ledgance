@@ -345,6 +345,14 @@ the repository.
   details left, single-file upload panel right, link icon on the divider. Uploads on both
   platforms accept multiple files, each its own command through the full pipeline.
 - **Accounting documents** gained the same button-opened upload modal and drop zone.
+- **Clients grid.** The whole card links to that client's engagements, with a "View details →"
+  affordance revealed on hover *and* keyboard focus rather than a single small link.
+- **Form controls.** Shared `SelectField` and `DateField` in `components/workspace.tsx`, used by
+  the create-engagement dialog: a styled listbox with optional hint lines and a leading icon,
+  and a calendar popover whose month/year header is ours rather than react-day-picker's (its
+  dropdown caption layers a transparent native select over a visible label). Fixed-height
+  six-week grid, centred against the header, sized so the longest month name and the year both
+  render untruncated. `components/ui` left unmodified throughout (ADR-013).
 
 **Performance**
 

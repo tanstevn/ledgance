@@ -254,7 +254,6 @@ function UploadDocumentDialog({
       });
     },
     onError: (errors) => {
-      // A batch can fail part-way; the list refetch shows what did land.
       toast.error(errors.join(" "));
       queryClient.invalidateQueries({
         queryKey: ["audit-evidence", engagementId],
@@ -496,7 +495,6 @@ function DocumentDetailDialog({
   memberName: (userId: string) => string;
   onClose: () => void;
 }) {
-  // Keyed by "version-action" so only the clicked button shows its spinner.
   const [fetching, setFetching] = useState<string | null>(null);
   const [addingVersion, setAddingVersion] = useState(false);
 
@@ -714,8 +712,6 @@ function DocumentDetailDialog({
                   item={item}
                   onClose={() => setAddingVersion(false)}
                 />
-                {/* Anchored to this column's own left edge, where the divider is drawn —
-                    centering on the wrapper instead lands half the grid gap off the line. */}
                 <span
                   aria-hidden
                   className="absolute left-0 top-1/2 hidden h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-border/60 bg-background text-primary shadow-md lg:flex"

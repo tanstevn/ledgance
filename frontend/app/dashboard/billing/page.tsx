@@ -87,8 +87,6 @@ function PlanCarousel({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // The observer's first callback measures the row, so nothing needs to set state during
-    // render or from the effect body itself.
     const observer = new ResizeObserver(() => sync());
     observer.observe(element);
 
@@ -102,8 +100,6 @@ function PlanCarousel({ children }: { children: React.ReactNode }) {
     });
 
   return (
-    // min-w-0 on both: this sits in the dialog's grid, and a grid item's automatic minimum
-    // width is its content — without it the row grows past the dialog instead of scrolling.
     <div className="relative w-full min-w-0">
       <div
         ref={scroller}
@@ -235,7 +231,6 @@ function ChangePlanDialog({
                   {presentation?.name ?? plan.code}
                 </h3>
                 <div className="mt-1 flex items-baseline gap-1">
-                  {/* An amount carries the emphasis; "Contact sales" is a status, not a price. */}
                   <span
                     className={`font-display font-bold ${
                       price.period ? "text-xl" : "text-base"

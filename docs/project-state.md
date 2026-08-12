@@ -340,6 +340,37 @@ rebuilt against the paged endpoints above.
   from `EngagementDetail.Progress` or the working-paper list — the engagement domain records
   no actual hours, so no "budget used" is shown; there is no Export (nothing to export to
   yet).
+- **Form controls (2026-08-11).** `components/workspace.tsx` gained two shared fields, used by
+  the create-engagement dialog and available to every other form:
+
+  `SelectField` — a Radix select whose list items may carry a second hint line (the client
+  picker shows each client's industry). Three fixes the vendored `SelectTrigger` forced:
+  explicit children are passed to `SelectValue` so the trigger renders **only the label** —
+  by default Radix renders the whole selected item, and `line-clamp-1` then collapsed the
+  hint line into a trailing ellipsis; `gap-2` plus truncation keeps a long value off the
+  chevron, which `justify-between` alone does not; and an optional leading `icon` sits in a
+  flex row forced with `!flex`, because the vendored `[&>span]:line-clamp-1` applies
+  `display:-webkit-box` to any direct span child and would otherwise break that row. The
+  listbox renders at `z-[70]`, above the date popover, which is itself above the dialog.
+
+  `DateField` — a calendar in a popover replacing the native date input. It stores the ISO
+  `yyyy-MM-dd` string the API's `DateOnly` expects and parses at local noon, so a picked date
+  never shifts a day across timezones. The popover is portalled with collision padding at
+  `z-[60]`, so the dialog never clips it. **The month/year header is ours**, not
+  react-day-picker's: its dropdown caption layers a transparent native `<select>` over a
+  visible label, so styling the select renders both (this shipped once and had to be
+  undone). The library's caption and nav are hidden, the displayed month is driven by
+  `month`/`onMonthChange`, and the header is two `SelectField`s between spaced arrow
+  buttons. `fixedWeeks` keeps the grid at six rows so the popover does not resize as the user
+  pages between months, the grid is centred against the wider header rather than
+  left-aligned, and the header widths are sized so the longest month name and the year both
+  render without truncation (`min-w-0` on the month select stops a long name pushing the next
+  arrow out of the popover). `components/ui` is left unmodified throughout (ADR-013).
+
+  `FieldSelect` (native) remains for dense inline filters where a full listbox is heavier
+  than the job needs.
+- **Client cards are fully clickable** — the whole card links to that client's engagements, with
+  a "View details →" affordance revealed on hover *and* keyboard focus.
 - **Documents round (2026-08-11).** Evidence gained real **versioning with retained history**
   (migration `0010`): superseding now pushes the outgoing version — path, size, note,
   uploader, date — into `version_history` instead of overwriting in place, re-uploading an

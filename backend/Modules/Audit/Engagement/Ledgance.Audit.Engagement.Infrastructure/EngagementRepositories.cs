@@ -212,8 +212,6 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
         }
 
         public async Task<EngagementProgress> GetAsync(Guid engagementId, CancellationToken ct) {
-            // Five independent tables; fetched together this snapshot costs one round trip of
-            // latency instead of five.
             var proceduresTask = _procedures.ListAsync(engagementId, ct);
             var papersTask = _papers.ListAsync(engagementId, ct);
             var findingsTask = _findings.ListAsync(engagementId, ct);

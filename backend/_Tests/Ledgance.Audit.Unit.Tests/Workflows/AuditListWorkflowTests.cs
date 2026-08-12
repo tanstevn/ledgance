@@ -45,8 +45,6 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
                 EngagementType.FinancialStatement, new DateOnly(2026, 1, 1),
                 new DateOnly(2026, 12, 31), null, 100, Guid.NewGuid());
 
-            // Status only moves through the aggregate's gates, which is not what these tests
-            // exercise — the repository fake stores whatever the list query must filter on.
             if (status is not EngagementStatus.Planning) {
                 engagement = DomainEngagement.Restore(engagement.Id, engagement.ClientId,
                     engagement.Name, engagement.Type, status, engagement.PeriodStart,

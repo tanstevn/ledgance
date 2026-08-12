@@ -93,8 +93,6 @@ namespace Ledgance.Shared.Infrastructure.Billing {
                     (int)price.Recurring.IntervalCount);
             }
             catch (StripeException exception) {
-                // A misconfigured id must not take the pricing page down; the plan simply shows
-                // as unpriced until the configuration is corrected.
                 _logger.LogWarning("Could not read price {PriceId} for {Plan}: {Reason}",
                     priceId, plan, exception.Message);
 

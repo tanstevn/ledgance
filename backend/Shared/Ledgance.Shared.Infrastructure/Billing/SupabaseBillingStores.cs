@@ -143,7 +143,6 @@ namespace Ledgance.Shared.Infrastructure.Billing {
                 return true;
             }
             catch (global::Supabase.Postgrest.Exceptions.PostgrestException) {
-                // A concurrent delivery of the same event won the unique index.
                 return false;
             }
         }

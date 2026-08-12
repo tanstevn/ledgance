@@ -51,8 +51,6 @@ namespace Ledgance.Shared.Infrastructure.Billing {
     /// change. A plan with no configured price cannot be purchased at all.
     /// </summary>
     public sealed class ConfiguredBillingPriceCatalog : IBillingPriceCatalog {
-        // Stripe price identifiers are always "price_…"; an amount or a placeholder typed here
-        // would otherwise be offered for sale and only fail at checkout.
         private const string PriceIdPrefix = "price_";
 
         private readonly Dictionary<PlanCode, string> _byPlan = [];

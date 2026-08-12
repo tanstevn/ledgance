@@ -4,7 +4,15 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ClipboardCheck, Clock, Loader2, Plus, Search } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  ClipboardCheck,
+  Clock,
+  Loader2,
+  Plus,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,9 +28,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-context";
 import {
+  DateField,
   EmptyCard,
   ErrorCard,
   FieldSelect,
+  SelectField,
   LoadingRows,
   Pagination,
   ProgressTrack,
@@ -115,43 +125,42 @@ function CreateEngagementDialog({
           <div className="grid gap-4 py-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="eng-client">Client</Label>
-              <FieldSelect
+              <SelectField
                 id="eng-client"
                 value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-              >
-                <option value="">Select a client…</option>
-                {clients
+                onValueChange={setClientId}
+                placeholder="Select a client…"
+                icon={Building2}
+                options={clients
                   .filter((client) => !client.isArchived)
-                  .map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-              </FieldSelect>
+                  .map((client) => ({
+                    value: client.id,
+                    label: client.name,
+                    hint: client.industry || undefined,
+                  }))}
+              />
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="eng-name">Engagement name</Label>
               <Input
                 id="eng-name"
                 placeholder="FY2026 Financial Statement Audit"
+                className="h-11 rounded-xl"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="eng-type">Type</Label>
-              <FieldSelect
+              <SelectField
                 id="eng-type"
                 value={type}
-                onChange={(e) => setType(e.target.value)}
-              >
-                {engagementTypes.map((value) => (
-                  <option key={value} value={value}>
-                    {spaced(value)}
-                  </option>
-                ))}
-              </FieldSelect>
+                onValueChange={setType}
+                options={engagementTypes.map((value) => ({
+                  value,
+                  label: spaced(value),
+                }))}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="eng-budget">Budget hours</Label>
@@ -159,26 +168,27 @@ function CreateEngagementDialog({
                 id="eng-budget"
                 type="number"
                 min="0"
+                className="h-11 rounded-xl"
                 value={budgetHours}
                 onChange={(e) => setBudgetHours(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="eng-start">Period start</Label>
-              <Input
+              <DateField
                 id="eng-start"
-                type="date"
                 value={periodStart}
-                onChange={(e) => setPeriodStart(e.target.value)}
+                onChange={setPeriodStart}
+                placeholder="Pick a start date"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="eng-end">Period end</Label>
-              <Input
+              <DateField
                 id="eng-end"
-                type="date"
                 value={periodEnd}
-                onChange={(e) => setPeriodEnd(e.target.value)}
+                onChange={setPeriodEnd}
+                placeholder="Pick an end date"
               />
             </div>
           </div>
@@ -254,7 +264,6 @@ function EngagementsView() {
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
 
-  // A new search term invalidates the page the user was on, as the other filters do.
   useEffect(() => {
     const timer = setTimeout(() => {
       setAppliedSearch(search.trim());

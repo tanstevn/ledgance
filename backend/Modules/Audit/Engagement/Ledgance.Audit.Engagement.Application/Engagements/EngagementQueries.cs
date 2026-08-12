@@ -213,8 +213,6 @@ namespace Ledgance.Audit.Engagement.Application.Engagements {
                 return Result<EngagementDetail>.Error("Engagement was not found.");
             }
 
-            // Independent reads resolved together — this query answers the engagement
-            // workspace's first paint, so its latency is the page's latency.
             var teamTask = _team.ListAsync(engagement.Id, ct);
             var namesTask = _clients.GetNamesAsync([engagement.ClientId], ct);
             var progressTask = _progress.GetAsync(engagement.Id, ct);

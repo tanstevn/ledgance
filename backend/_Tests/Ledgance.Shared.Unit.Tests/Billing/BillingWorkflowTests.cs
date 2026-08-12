@@ -140,7 +140,6 @@ namespace Ledgance.Shared.Unit.Tests.Billing {
             Assert.Equal(PlanCode.AccountingSolo, request.Plan);
             Assert.Equal(SoloPrice, request.PriceId);
 
-            // The customer is stored before the session completes, so a retry reuses it.
             var stored = Assert.Single(_store.Rows);
             Assert.Equal(_gateway.CustomerId, stored.CustomerId);
 
@@ -333,7 +332,6 @@ namespace Ledgance.Shared.Unit.Tests.Billing {
             Assert.True(stored.CancelAtPeriodEnd);
             Assert.Equal(SubscriptionStatus.Active, stored.Status);
 
-            // Access continues until the provider actually ends the subscription.
             var entitlements = await ResolveEntitlements().GetAsync(user.OrganizationId,
                 ProductModule.Accounting, default);
             Assert.Equal(PlanCode.AccountingSolo, entitlements.Plan);

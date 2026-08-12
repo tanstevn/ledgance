@@ -31,8 +31,6 @@ const usePaginatedQuery = <T>(
       const result = await get<PaginatedResult<T>>(formattedUrl, params);
       return result.successful ? result : Promise.reject(result.errors);
     },
-    // Page and filter changes swap the query key; keeping the previous rows on screen while
-    // the next page loads turns pagination into a content swap instead of a skeleton flash.
     placeholderData: keepPreviousData,
     ...options,
   });
@@ -69,8 +67,6 @@ const useApiInfiniteQuery = <T>(
     },
     getNextPageParam: (last) =>
       last.pageNumber < last.totalPages ? last.pageNumber + 1 : undefined,
-    // A search-term change swaps the query key; the grid keeps showing the previous cards
-    // until the filtered set arrives.
     placeholderData: keepPreviousData,
   });
 };

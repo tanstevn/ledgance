@@ -67,13 +67,10 @@ namespace Ledgance.Shared.Application.Billing {
                 return Result<string>.Success("unmatched");
             }
 
-            // Providers deliver out of order; an older event must never undo newer state.
             if (stored.LastEventAt is { } last && last > verified.OccurredAt) {
                 return Result<string>.Success("stale");
             }
 
-            // Events that only reference a subscription (checkout completion, invoices) are
-            // resolved by asking the provider for the current state rather than inferring it.
             var subscriptionId = verified.SubscriptionIdHint ?? stored.SubscriptionId;
 
             var snapshot = verified.Subscription

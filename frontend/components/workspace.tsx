@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
+  Calendar as CalendarIcon,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -14,6 +15,19 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -505,6 +519,222 @@ export function FileDropZone({
     </div>
   );
 }
+
+/**
+ * Styled select for forms that deserve a polished control. `FieldSelect` (native) stays for
+ * dense inline filters; this one renders its own listbox, so options can carry descriptions
+ * and the open list is styled consistently across platforms.
+ */
+export function SelectField({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Select…",
+  disabled,
+  id,
+  className,
+  icon: Icon,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: { value: string; label: string; hint?: string }[];
+  placeholder?: string;
+  disabled?: boolean;
+  id?: string;
+  className?: string;
+  /** Leading icon inside the trigger, shown for both the placeholder and the selection. */
+  icon?: LucideIcon;
+}) {
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+      <SelectTrigger
+        id={id}
+        className={cn(
+          "h-11 gap-2 rounded-xl [&>svg]:shrink-0",
+          className,
+        )}
+      >
+        <span className="flex min-w-0 flex-1 items-center gap-2 !flex">
+          {Icon && (
+            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          )}
+          <SelectValue placeholder={placeholder}>
+            {selected && <span className="truncate">{selected.label}</span>}
+          </SelectValue>
+        </span>
+      </SelectTrigger>
+      <SelectContent className="z-[70] rounded-xl">
+        {options.map((option) => (
+          <SelectItem
+            key={option.value}
+            value={option.value}
+            className="rounded-lg py-2"
+          >
+            <span className="block text-sm font-medium">{option.label}</span>
+            {option.hint && (
+              <span className="block text-xs text-muted-foreground">
+                {option.hint}
+              </span>
+            )}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/**
+ * Date field over a calendar popover. The value is the ISO `yyyy-MM-dd` string the API's
+ * `DateOnly` expects, so no timezone conversion happens on the way in or out — a date picked
+ * here is the date the server stores.
+ *
+ * The month/year header is ours rather than react-day-picker's: its dropdown caption layers a
+ * transparent native select over a visible label, so it cannot be restyled without showing
+ * both. Owning the header also lets the arrows sit clear of the grid.
+ */
+export function DateField({
+  value,
+  onChange,
+  placeholder = "Pick a date",
+  disabled,
+  id,
+  fromYear = new Date().getFullYear() - 5,
+  toYear = new Date().getFullYear() + 5,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  id?: string;
+  fromYear?: number;
+  toYear?: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const selected = value ? new Date(`${value}T12:00:00`) : undefined;
+
+  const [month, setMonth] = useState<Date>(selected ?? new Date());
+
+  const toIso = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+      date.getDate(),
+    ).padStart(2, "0")}`;
+
+  const monthOptions = Array.from({ length: 12 }, (_, index) => ({
+    value: String(index),
+    label: new Date(2000, index, 1).toLocaleString(undefined, { month: "long" }),
+  }));
+
+  const yearOptions = Array.from({ length: toYear - fromYear + 1 }, (_, index) => ({
+    value: String(fromYear + index),
+    label: String(fromYear + index),
+  }));
+
+  const shiftMonth = (delta: number) =>
+    setMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setMonth(selected ?? new Date());
+        setOpen(next);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          className={cn(
+            "h-11 w-full justify-start rounded-xl px-3 font-normal",
+            !selected && "text-muted-foreground",
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+          {selected
+            ? selected.toLocaleDateString(undefined, {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })
+            : placeholder}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        collisionPadding={16}
+        className="z-[60] w-auto rounded-xl p-0"
+      >
+        <div className="w-[21rem] space-y-3 p-3">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Previous month"
+              className="h-9 w-9 shrink-0 rounded-lg"
+              onClick={() => shiftMonth(-1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            <SelectField
+              value={String(month.getMonth())}
+              onValueChange={(next) =>
+                setMonth(new Date(month.getFullYear(), Number(next), 1))
+              }
+              options={monthOptions}
+              className="h-9 min-w-0 flex-1 rounded-lg"
+            />
+            <SelectField
+              value={String(month.getFullYear())}
+              onValueChange={(next) =>
+                setMonth(new Date(Number(next), month.getMonth(), 1))
+              }
+              options={yearOptions}
+              className="h-9 w-24 shrink-0 rounded-lg"
+            />
+
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Next month"
+              className="h-9 w-9 shrink-0 rounded-lg"
+              onClick={() => shiftMonth(1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="flex justify-center">
+            <Calendar
+              mode="single"
+              month={month}
+              onMonthChange={setMonth}
+              selected={selected}
+              fixedWeeks
+              className="p-0"
+              classNames={{ month_caption: "hidden", nav: "hidden" }}
+              onSelect={(date) => {
+                if (date) {
+                  onChange(toIso(date));
+                  setOpen(false);
+                }
+              }}
+            />
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
 /** Native select styled to match the Input component — lighter than the Radix select. */
 export function FieldSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {

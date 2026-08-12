@@ -70,8 +70,6 @@ namespace Ledgance.Audit.Engagement.Application.Evidence {
             entitlements.RequireWithinLimit(Entitlements.StorageBytes,
                 usedBytes + request.Content.LongLength);
 
-            // Re-uploading a file name that already exists on this engagement versions the
-            // existing document rather than creating a lookalike beside it.
             var existing = request.SupersedesEvidenceId is not null
                 ? await _evidence.FindAsync(request.SupersedesEvidenceId.Value, ct)
                 : await _evidence.FindByFileNameAsync(request.EngagementId,

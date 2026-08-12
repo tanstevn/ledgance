@@ -61,7 +61,6 @@ export function SubscribeView({ planCode }: { planCode: string }) {
   const presentation = planPresentation[planCode];
   const platform = platformOf(planCode);
 
-  // Only the server knows whether a plan has a live price; never offer checkout without one.
   const canCheckout = plan?.purchasable ?? false;
 
   if (authLoading || plansLoading) {

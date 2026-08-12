@@ -208,9 +208,12 @@ See `docs/ai-architecture.md` for what is implemented versus planned.
   `Result<T>` / `PaginatedResult<T>` envelope and attach the Supabase bearer token.
 - Every data surface handles **loading, empty, error, populated**. Route-level `loading.tsx`
   gives navigation an instant response; without it the router holds the previous page.
-- Reuse the shared pieces in `components/workspace.tsx` (`FileDropZone`, `Pagination`,
-  `RecordAvatar`, `StatusPill`, `ProgressTrack`, `EmptyCard`, `ErrorCard`) rather than
-  re-implementing them per page.
+- Reuse the shared pieces in `components/workspace.tsx` — `SelectField` and `DateField` for
+  forms, `FieldSelect` for dense inline filters, plus `FileDropZone`, `Pagination`,
+  `InfiniteScrollSentinel`, `RecordAvatar`, `MemberAvatar`, `StatusPill`, `ProgressTrack`,
+  `StatCard`, `EmptyCard`, `ErrorCard`, `LoadingRows` — rather than re-implementing them per
+  page. Dates travel as the ISO `yyyy-MM-dd` string the API's `DateOnly` expects; parse them
+  at local noon so a date never shifts across a timezone boundary.
 - `components/ui/**` is vendored upstream code and is lint-exempt; author new components in
   `components/`.
 - Only `NEXT_PUBLIC_*` values reach the browser. The service-role key must never appear here.

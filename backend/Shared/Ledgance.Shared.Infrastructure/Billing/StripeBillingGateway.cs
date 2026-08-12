@@ -54,8 +54,6 @@ namespace Ledgance.Shared.Infrastructure.Billing {
 
         public async Task<string> CreateCheckoutSessionAsync(CheckoutRequest request,
             CancellationToken ct) {
-            // Metadata rides onto the subscription itself, so every later event can be matched
-            // back to the organization and product without trusting the caller.
             var metadata = new Dictionary<string, string> {
                 [StripeMetadata.OrganizationId] = request.OrganizationId.ToString(),
                 [StripeMetadata.Module] = request.Module.ToString(),
@@ -81,9 +79,6 @@ namespace Ledgance.Shared.Infrastructure.Billing {
                 }
             };
 
-            // With no explicit list, Stripe offers the methods the account has enabled for the
-            // customer's country — cards and wallets internationally, and local methods such as
-            // GCash or Maya for Philippine customers where the account supports them.
             if (_settings.PaymentMethodTypes.Count > 0) {
                 options.PaymentMethodTypes = _settings.PaymentMethodTypes;
             }

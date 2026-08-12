@@ -62,14 +62,12 @@ namespace Ledgance.Shared.Unit.Tests.Subscriptions {
             Assert.Equal("month", solo.Interval);
             Assert.Equal(1, solo.IntervalCount);
 
-            // A plan the provider has no price for says so rather than guessing an amount.
             Assert.Null(plans["AccountingTeam"].AmountMinorUnits);
             Assert.Null(plans["Free"].AmountMinorUnits);
         }
 
         [Fact]
         public async Task A_configured_price_the_provider_cannot_report_still_renders_the_page() {
-            // The catalog knows the id, but the provider returned nothing for it.
             var catalog = new StubPriceCatalog().With(PlanCode.AccountingSolo, "price_solo");
 
             var result = await Handler(catalog)

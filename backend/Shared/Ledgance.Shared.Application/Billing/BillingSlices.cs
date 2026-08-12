@@ -96,8 +96,6 @@ namespace Ledgance.Shared.Application.Billing {
                 organization?.Name ?? "Ledgance organization", user.Email,
                 existing?.CustomerId, ct);
 
-            // Persisted before the session is created: if anything after this fails, the retry
-            // reuses this customer instead of leaving an orphan behind at the provider.
             await _subscriptions.UpsertAsync(new StoredSubscription(
                 user.OrganizationId, module, existing?.Plan ?? PlanCode.Free,
                 existing?.Status ?? SubscriptionStatus.Canceled, customerId,
@@ -348,8 +346,6 @@ namespace Ledgance.Shared.Application.Billing {
             CancellationToken ct) {
             var organizationId = _currentUser.RequireOrganizationId();
 
-            // Both products' stored state and entitlements are independent reads; together
-            // they cost one round trip of latency instead of four.
             var states = await Task.WhenAll(Enum.GetValues<ProductModule>()
                 .Select(module => LoadAsync(organizationId, module, ct)));
 
@@ -362,8 +358,6 @@ namespace Ledgance.Shared.Application.Billing {
             ProductModule module, CancellationToken ct) {
             var storedTask = _subscriptions.FindAsync(organizationId, module, ct);
 
-            // The effective plan comes from the entitlement service, so what billing shows
-            // is what the rest of the application enforces.
             var entitlementsTask = _entitlements.GetAsync(organizationId, module, ct);
 
             await Task.WhenAll(storedTask, entitlementsTask);

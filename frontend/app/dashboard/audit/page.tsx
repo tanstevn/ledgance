@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowRight,
   Briefcase,
   Building2,
   Globe,
@@ -171,7 +172,11 @@ function CreateClientDialog({ onCreated }: { onCreated: () => void }) {
 
 function ClientCard({ client }: { client: ClientCardRow }) {
   return (
-    <article className="flex flex-col rounded-2xl border border-border/60 bg-card p-4 transition-colors hover:border-border">
+    <Link
+      href={`/dashboard/audit/engagements?clientId=${client.id}`}
+      aria-label={`${client.name} — view engagements`}
+      className="group flex flex-col rounded-2xl border border-border/60 bg-card p-4 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <div className="flex items-start justify-between gap-2">
         <RecordAvatar name={client.name} />
         <Badge
@@ -217,14 +222,17 @@ function ClientCard({ client }: { client: ClientCardRow }) {
         </div>
       </dl>
 
-      <Link
-        href={`/dashboard/audit/engagements?clientId=${client.id}`}
-        className="mt-4 border-t border-border/60 pt-3 text-xs text-primary hover:underline"
-      >
-        {client.totalEngagements} total{" "}
-        {client.totalEngagements === 1 ? "engagement" : "engagements"}
-      </Link>
-    </article>
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs">
+        <span className="text-muted-foreground">
+          {client.totalEngagements} total{" "}
+          {client.totalEngagements === 1 ? "engagement" : "engagements"}
+        </span>
+        <span className="flex items-center gap-1 font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          View details
+          <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      </div>
+    </Link>
   );
 }
 

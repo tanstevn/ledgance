@@ -45,7 +45,6 @@ export default function LoginPage() {
       );
     } finally {
       toast.success("Welcome back!");
-      // setLoading(false);
     }
   };
 

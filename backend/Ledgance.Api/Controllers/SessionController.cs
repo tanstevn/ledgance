@@ -41,9 +41,6 @@ namespace Ledgance.Api.Controllers {
                     [], [], [], NeedsOnboarding: true));
             }
 
-            // The per-module entitlements and the organization read are independent; resolving
-            // them together keeps this endpoint — which every dashboard page waits on — at the
-            // cost of one round trip instead of three.
             var entitlementTasks = Enum.GetValues<ProductModule>()
                 .Select(module => _entitlements.GetAsync(user.OrganizationId, module, ct))
                 .ToList();

@@ -360,8 +360,6 @@ export default function EngagementWorkspace({
     { queryKey: ["audit-papers", id], enabled: ready },
   );
 
-  // Same key the Documents tab uses, so this is one fetch shared between the tab badge
-  // and the tab body.
   const evidence = useApiQuery<EvidenceRow[]>(
     `/api/audit/engagements/${id}/evidence`,
     { queryKey: ["audit-evidence", id], enabled: ready },
@@ -566,7 +564,6 @@ export default function EngagementWorkspace({
                   activeMore && "bg-muted font-semibold text-foreground",
                 )}
               >
-                {/* {activeMore ? activeMore[1] : "More"} */}
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

@@ -43,7 +43,6 @@ namespace Ledgance.Accounting.Unit.Tests.Workflows {
             Assert.Equal("Accounting", entry.Module);
             Assert.Equal(result.Data, entry.ContextId);
 
-            // Recorded as a predicate so the reader renders "You created the entity …".
             Assert.Equal("created the entity Acme Trading.", entry.Summary);
             Assert.True(char.IsLower(entry.Summary[0]));
         }

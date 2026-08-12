@@ -28,7 +28,6 @@ namespace Ledgance.Audit.Unit.Tests.Domain {
             Assert.Equal("Initial confirmation request", versions[2].Note);
             Assert.Equal("Corrected account number formatting", versions[1].Note);
 
-            // Every version keeps its own storage path, so old files stay downloadable.
             Assert.Equal("eng/ev/v1/bank-confirmation.pdf", evidence.FindVersion(1)!.StoragePath);
             Assert.Equal("eng/ev/v3/bank-confirmation.pdf", evidence.FindVersion(3)!.StoragePath);
             Assert.Null(evidence.FindVersion(9));
