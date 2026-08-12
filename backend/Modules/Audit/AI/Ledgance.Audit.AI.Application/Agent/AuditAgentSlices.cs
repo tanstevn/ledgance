@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Ledgance.Audit.AI.Domain;
 using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Application.AccountingContext;
@@ -31,6 +31,8 @@ namespace Ledgance.Audit.AI.Application.Agent {
         public string Model { get; set; } = string.Empty;
         public int TurnsUsed { get; set; }
 
+        public AiUsageView? Usage { get; set; }
+
         public string Disclaimer { get; set; } =
             "AI-generated analysis produced by an agent over authorized, read-only data. " +
             "It assists professional judgment and must be reviewed before any use.";
@@ -46,7 +48,8 @@ namespace Ledgance.Audit.AI.Application.Agent {
                 }).ToList(),
                 Provider = run.Provider,
                 Model = run.Model,
-                TurnsUsed = run.TurnsUsed
+                TurnsUsed = run.TurnsUsed,
+                Usage = AiUsageView.From(run.Usage)
             };
     }
 
@@ -71,6 +74,75 @@ namespace Ledgance.Audit.AI.Application.Agent {
                 : Guid.Empty;
 
         public const string NoParameters = """{"type":"object","properties":{}}""";
+    }
+
+    /// <summary>
+    /// The agent's whole world: read-only queries of one engagement, dispatched through the
+    /// mediator so each call re-runs the full pipeline as the calling user. The engagement id is
+    /// bound here — an agent can never choose another engagement, and every Audit agent, whether
+    /// it is investigating or writing a report, is confined to exactly this set.
+    /// </summary>
+    public static class AuditAgentTools {
+        public static List<AgentTool> ForEngagement(IMediator mediator, Guid engagementId) => [
+            new AgentTool("get_engagement_overview",
+                "The engagement's status, period, materiality, plan and progress.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetEngagementByIdQuery { Id = engagementId }, ct)),
+
+            new AgentTool("list_risks",
+                "The identified risks of material misstatement with responses.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetRisksQuery { EngagementId = engagementId }, ct)),
+
+            new AgentTool("list_procedures",
+                "The audit procedures with status and conclusions.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetProceduresQuery { EngagementId = engagementId }, ct)),
+
+            new AgentTool("list_working_papers",
+                "The working papers with status and open review notes.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetWorkingPapersQuery { EngagementId = engagementId }, ct)),
+
+            new AgentTool("get_working_paper",
+                "One working paper's full content and review notes.",
+                """{"type":"object","properties":{"workingPaperId":{"type":"string","description":"The working paper id from list_working_papers."}},"required":["workingPaperId"]}""",
+                (arguments, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetWorkingPaperByIdQuery {
+                        EngagementId = engagementId,
+                        WorkingPaperId = AgentToolJson.GetGuid(arguments, "workingPaperId")
+                    }, ct)),
+
+            new AgentTool("list_findings",
+                "The findings raised so far with severity, status and recommendations.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetFindingsQuery { EngagementId = engagementId }, ct)),
+
+            new AgentTool("list_evidence",
+                "The evidence items with file metadata, versions and descriptions.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetEvidenceQuery { EngagementId = engagementId }, ct)),
+
+            new AgentTool("get_trial_balance",
+                "The trial balance imported into this engagement, with line detail.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetTrialBalanceQuery { EngagementId = engagementId }, ct)),
+
+            new AgentTool("get_linked_accounting_context",
+                "The organization's own Ledgance Accounting books (entities and fiscal " +
+                "periods), when the organization has authorized sharing. Availability is " +
+                "enforced server-side.",
+                AgentToolJson.NoParameters,
+                (_, ct) => AgentToolJson.DispatchAsync(mediator,
+                    new GetLinkedAccountingContextQuery(), ct))
+        ];
     }
 
     [RequiresPermission(AuditEngagementPermissions.Read)]
@@ -122,7 +194,9 @@ namespace Ledgance.Audit.AI.Application.Agent {
 
             var run = await _agent.RunAsync(new AgentWorkload(ProductModule.Audit,
                 AuditAiCapabilities.Agent.Key, request.Goal, SystemPrompt,
-                BuildTools(request.EngagementId)), ct);
+                AuditAgentTools.ForEngagement(_mediator, request.EngagementId),
+                Cost: AuditAiCapabilities.Agent.Cost,
+                EngagementId: request.EngagementId), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.agent",
                 "Engagement", request.EngagementId,
@@ -136,70 +210,5 @@ namespace Ledgance.Audit.AI.Application.Agent {
         private static string Trim(string goal) =>
             goal.Length <= 120 ? goal : goal[..120] + "…";
 
-        /// <summary>
-        /// The agent's whole world: read-only queries of this engagement, dispatched through
-        /// the mediator so each call re-runs the full pipeline as the calling user. The
-        /// engagement id is fixed here — the agent can never choose another engagement.
-        /// </summary>
-        private List<AgentTool> BuildTools(Guid engagementId) => [
-            new AgentTool("get_engagement_overview",
-                "The engagement's status, period, materiality, plan and progress.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetEngagementByIdQuery { Id = engagementId }, ct)),
-
-            new AgentTool("list_risks",
-                "The identified risks of material misstatement with responses.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetRisksQuery { EngagementId = engagementId }, ct)),
-
-            new AgentTool("list_procedures",
-                "The audit procedures with status and conclusions.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetProceduresQuery { EngagementId = engagementId }, ct)),
-
-            new AgentTool("list_working_papers",
-                "The working papers with status and open review notes.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetWorkingPapersQuery { EngagementId = engagementId }, ct)),
-
-            new AgentTool("get_working_paper",
-                "One working paper's full content and review notes.",
-                """{"type":"object","properties":{"workingPaperId":{"type":"string","description":"The working paper id from list_working_papers."}},"required":["workingPaperId"]}""",
-                (arguments, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetWorkingPaperByIdQuery {
-                        EngagementId = engagementId,
-                        WorkingPaperId = AgentToolJson.GetGuid(arguments, "workingPaperId")
-                    }, ct)),
-
-            new AgentTool("list_findings",
-                "The findings raised so far with severity, status and recommendations.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetFindingsQuery { EngagementId = engagementId }, ct)),
-
-            new AgentTool("list_evidence",
-                "The evidence items with file metadata, versions and descriptions.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetEvidenceQuery { EngagementId = engagementId }, ct)),
-
-            new AgentTool("get_trial_balance",
-                "The trial balance imported into this engagement, with line detail.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetTrialBalanceQuery { EngagementId = engagementId }, ct)),
-
-            new AgentTool("get_linked_accounting_context",
-                "The organization's own Ledgance Accounting books (entities and fiscal " +
-                "periods), when the organization has authorized sharing. Availability is " +
-                "enforced server-side.",
-                AgentToolJson.NoParameters,
-                (_, ct) => AgentToolJson.DispatchAsync(_mediator,
-                    new GetLinkedAccountingContextQuery(), ct))
-        ];
     }
 }

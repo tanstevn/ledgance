@@ -3,6 +3,9 @@ using Ledgance.Audit.AI.Application.Agent;
 using Ledgance.Audit.AI.Application.Analysis;
 using Ledgance.Audit.AI.Application.Assistant;
 using Ledgance.Audit.AI.Application.Drafting;
+using Ledgance.Audit.AI.Application.Planning;
+using Ledgance.Audit.AI.Application.Portfolio;
+using Ledgance.Audit.AI.Application.Reporting;
 using Ledgance.Shared.Application.Abstractions;
 using Ledgance.Shared.Application.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -34,6 +37,46 @@ namespace Ledgance.Api.Controllers.Audit {
             return await _mediator.SendAsync(command, ct);
         }
 
+        [HttpPost("engagements/{engagementId:guid}/summarize-findings")]
+        public async Task<Result<AiProposalResult>> SummarizeFindings(Guid engagementId,
+            [FromBody] SummarizeFindingsCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/summarize-engagement")]
+        public async Task<Result<AiProposalResult>> SummarizeEngagement(Guid engagementId,
+            CancellationToken ct)
+            => await _mediator.SendAsync(
+                new SummarizeEngagementCommand { EngagementId = engagementId }, ct);
+
+        [HttpPost("engagements/{engagementId:guid}/draft-note")]
+        public async Task<Result<AiProposalResult>> DraftNote(Guid engagementId,
+            [FromBody] DraftEngagementNoteCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/improve-wording")]
+        public async Task<Result<AiProposalResult>> ImproveWording(Guid engagementId,
+            [FromBody] ImproveWorkingPaperWordingCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/assist-plan")]
+        public async Task<Result<AiProposalResult>> AssistPlan(Guid engagementId,
+            [FromBody] AssistAuditPlanCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/assist-materiality")]
+        public async Task<Result<AiProposalResult>> AssistMateriality(Guid engagementId,
+            CancellationToken ct)
+            => await _mediator.SendAsync(
+                new AssistMaterialityCommand { EngagementId = engagementId }, ct);
+
         [HttpPost("engagements/{engagementId:guid}/suggest-risks")]
         public async Task<Result<AiProposalResult>> SuggestRisks(Guid engagementId,
             [FromBody] SuggestRisksCommand command, CancellationToken ct) {
@@ -61,6 +104,19 @@ namespace Ledgance.Api.Controllers.Audit {
             return await _mediator.SendAsync(command, ct);
         }
 
+        [HttpPost("engagements/{engagementId:guid}/analyze-engagement")]
+        public async Task<Result<AiProposalResult>> AnalyzeEngagement(Guid engagementId,
+            [FromBody] AnalyzeEngagementCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/analyze-evidence")]
+        public async Task<Result<AiProposalResult>> AnalyzeEvidence(Guid engagementId,
+            CancellationToken ct)
+            => await _mediator.SendAsync(
+                new AnalyzeEvidenceCommand { EngagementId = engagementId }, ct);
+
         [HttpPost("engagements/{engagementId:guid}/analyze-risks")]
         public async Task<Result<AiProposalResult>> AnalyzeRisks(Guid engagementId,
             CancellationToken ct)
@@ -79,11 +135,84 @@ namespace Ledgance.Api.Controllers.Audit {
             => await _mediator.SendAsync(
                 new AssistReviewCommand { EngagementId = engagementId }, ct);
 
+        [HttpPost("engagements/{engagementId:guid}/report-section")]
+        public async Task<Result<AiProposalResult>> GenerateReportSection(Guid engagementId,
+            [FromBody] GenerateReportSectionCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
         [HttpPost("engagements/{engagementId:guid}/draft-report")]
-        public async Task<Result<AiProposalResult>> DraftReport(Guid engagementId,
-            CancellationToken ct)
+        public async Task<Result<GeneratedReportView>> GenerateDraftReport(Guid engagementId,
+            [FromBody] GenerateDraftReportCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/engagement-report")]
+        public async Task<Result<GeneratedReportView>> GenerateEngagementReport(
+            Guid engagementId, [FromBody] GenerateEngagementReportCommand command,
+            CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/agentic-report")]
+        public async Task<Result<AgenticReportResult>> RunAgenticReport(Guid engagementId,
+            [FromBody] RunAgenticReportWorkflowCommand command, CancellationToken ct) {
+            command.EngagementId = engagementId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpGet("engagements/{engagementId:guid}/generated-reports")]
+        public async Task<Result<IEnumerable<GeneratedReportView>>> GetGeneratedReports(
+            Guid engagementId, CancellationToken ct)
             => await _mediator.SendAsync(
-                new DraftAuditReportCommand { EngagementId = engagementId }, ct);
+                new GetGeneratedReportsQuery { EngagementId = engagementId }, ct);
+
+        [HttpGet("engagements/{engagementId:guid}/generated-reports/{reportId:guid}")]
+        public async Task<Result<GeneratedReportView>> GetGeneratedReport(Guid engagementId,
+            Guid reportId, CancellationToken ct)
+            => await _mediator.SendAsync(new GetGeneratedReportByIdQuery {
+                EngagementId = engagementId,
+                ReportId = reportId
+            }, ct);
+
+        [HttpPost("engagements/{engagementId:guid}/generated-reports/{reportId:guid}/sections")]
+        public async Task<Result<GeneratedReportView>> RegenerateSection(Guid engagementId,
+            Guid reportId, [FromBody] RegenerateReportSectionCommand command,
+            CancellationToken ct) {
+            command.EngagementId = engagementId;
+            command.ReportId = reportId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("engagements/{engagementId:guid}/generated-reports/{reportId:guid}/consistency")]
+        public async Task<Result<AiProposalResult>> CheckConsistency(Guid engagementId,
+            Guid reportId, CancellationToken ct)
+            => await _mediator.SendAsync(new CheckReportConsistencyCommand {
+                EngagementId = engagementId,
+                ReportId = reportId
+            }, ct);
+
+        [HttpPost("engagements/{engagementId:guid}/generated-reports/{reportId:guid}/review")]
+        public async Task<Result<GeneratedReportView>> ReviewGeneratedReport(Guid engagementId,
+            Guid reportId, [FromBody] ReviewGeneratedReportCommand command,
+            CancellationToken ct) {
+            command.EngagementId = engagementId;
+            command.ReportId = reportId;
+            return await _mediator.SendAsync(command, ct);
+        }
+
+        [HttpPost("portfolio/analyze")]
+        public async Task<Result<AiProposalResult>> AnalyzePortfolio(
+            [FromBody] AnalyzePortfolioCommand command, CancellationToken ct)
+            => await _mediator.SendAsync(command, ct);
+
+        [HttpPost("portfolio/report")]
+        public async Task<Result<AiProposalResult>> GeneratePortfolioReport(
+            [FromBody] GeneratePortfolioReportCommand command, CancellationToken ct)
+            => await _mediator.SendAsync(command, ct);
 
         [HttpPost("engagements/{engagementId:guid}/agent")]
         public async Task<Result<AgentRunReport>> RunAgent(Guid engagementId,

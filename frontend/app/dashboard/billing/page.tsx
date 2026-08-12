@@ -14,6 +14,7 @@ import {
   Loader2,
   Plus,
   ShieldCheck,
+  Sparkles,
   TriangleAlert,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -37,10 +38,19 @@ import {
   fmtRenewal,
   moduleOf,
   statusLabel,
+  useAuditPlanUsage,
   useBillingOverview,
+  usageFor,
+  type AuditPlanUsage,
   type BillingProductState,
 } from "@/lib/billing";
 import {
+  formatBytes,
+  formatCredits,
+  nextPlanUp,
+  planAiCapabilities,
+  planAiCapacity,
+  planCapacity,
   planFeatures,
   planPresentation,
   plansForPlatform,
@@ -56,6 +66,100 @@ const statusTone = (state: BillingProductState) => {
   if (state.plan === "Free") return "bg-muted text-muted-foreground";
   return "bg-success text-success-foreground";
 };
+
+/** Storage is the only measure a person reads in bytes; everything else is a plain count. */
+const formatMeasure = (key: string, value: number) =>
+  key === "storage_bytes" ? formatBytes(value) : formatCredits(value);
+
+const fmtReset = (value: string | null | undefined) =>
+  value
+    ? new Date(value).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
+/**
+ * One metered dimension: what is in use against what the plan allows. An unlimited ceiling
+ * shows the figure without a bar, because there is no proportion to draw.
+ */
+function UsageBar({
+  label,
+  used,
+  limit,
+  entitlementKey,
+}: {
+  label: string;
+  used: number;
+  limit: number;
+  entitlementKey: string;
+}) {
+  const unlimited = limit === -1;
+  const ratio = unlimited || limit === 0 ? 0 : Math.min(used / limit, 1);
+  const tone =
+    ratio >= 1 ? "bg-destructive" : ratio >= 0.8 ? "bg-warning" : "bg-primary";
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-medium tabular-nums">
+          {formatMeasure(entitlementKey, used)}
+          <span className="text-muted-foreground">
+            {" / "}
+            {unlimited ? "Unlimited" : formatMeasure(entitlementKey, limit)}
+          </span>
+        </span>
+      </div>
+      {!unlimited && (
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className={`h-full rounded-full transition-all ${tone}`}
+            style={{ width: `${Math.round(ratio * 100)}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const usageLabels: Record<string, string> = {
+  max_users: "Users",
+  max_clients: "Clients",
+  max_engagements: "Engagements",
+  storage_bytes: "Storage",
+  ai_monthly_units: "AI credits",
+};
+
+function CurrentUsage({ usage }: { usage: AuditPlanUsage }) {
+  const resets = fmtReset(usage.aiPeriodResetsAt);
+
+  return (
+    <div className="mt-5 space-y-3 rounded-xl border border-border/60 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Current usage
+      </p>
+      {usage.measures
+        .filter((measure) => usageLabels[measure.key])
+        .map((measure) => (
+          <UsageBar
+            key={measure.key}
+            entitlementKey={measure.key}
+            label={usageLabels[measure.key]}
+            used={measure.used}
+            limit={measure.limit}
+          />
+        ))}
+      {resets && (
+        <p className="text-xs text-muted-foreground">
+          AI credits reset on {resets}. An AI action costs credits according to
+          the work it does — a question costs a little, a whole report a lot.
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * Lays the plans out side by side and pages through them with edge controls, so comparing
@@ -204,7 +308,7 @@ function ChangePlanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] sm:max-w-4xl">
+      <DialogContent className="max-h-[85vh] sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle>
             {hasSubscription ? "Change plan" : "Choose a plan"}
@@ -225,7 +329,7 @@ function ChangePlanDialog({
             return (
               <article
                 key={plan.code}
-                className="flex w-64 shrink-0 snap-start flex-col rounded-xl border border-border/60 p-4"
+                className="flex w-72 shrink-0 snap-start flex-col rounded-xl border border-border/60 p-4"
               >
                 <h3 className="font-display text-base font-semibold">
                   {presentation?.name ?? plan.code}
@@ -244,22 +348,46 @@ function ChangePlanDialog({
                     </span>
                   )}
                 </div>
-                <p className="mt-2 min-h-8 text-xs text-muted-foreground">
+                <p className="mt-2 min-h-10 text-xs text-muted-foreground">
                   {presentation?.tagline}
                 </p>
-                <ul className="mt-3 space-y-1.5 border-t border-border/60 pt-3">
-                  {planFeatures(plan, platform)
-                    .slice(0, 4)
-                    .map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-start gap-2 text-xs text-muted-foreground"
-                      >
-                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success" />
-                        {feature}
-                      </li>
-                    ))}
-                </ul>
+
+                <dl className="mt-3 space-y-1 border-t border-border/60 pt-3 text-xs">
+                  {planCapacity(plan, platform).map((row) => (
+                    <div key={row.key} className="flex justify-between gap-2">
+                      <dt className="text-muted-foreground">{row.label}</dt>
+                      <dd className="font-medium tabular-nums">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <div className="mt-3 border-t border-border/60 pt-3">
+                  <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <Sparkles className="h-3 w-3" />
+                    AI
+                  </p>
+                  {platform === "audit" && planAiCapacity(plan) && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {planAiCapacity(plan)}
+                    </p>
+                  )}
+                  <ul className="mt-2 space-y-1.5">
+                    {(platform === "audit"
+                      ? planAiCapabilities(plan, plans)
+                      : planFeatures(plan, platform, plans)
+                    )
+                      .slice(0, 5)
+                      .map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-xs text-muted-foreground"
+                        >
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success" />
+                          {feature}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
 
                 <div className="flex-1" />
 
@@ -298,6 +426,80 @@ function ChangePlanDialog({
   );
 }
 
+/**
+ * What the next plan up adds, stated as capacity and capability rather than as pressure. It
+ * appears only when there is a plan above the current one.
+ */
+function UpgradePreview({
+  current,
+  next,
+  platform,
+  plans,
+  onOpen,
+}: {
+  current: SubscriptionPlanRow;
+  next: SubscriptionPlanRow;
+  platform: Platform;
+  plans: SubscriptionPlanRow[];
+  onOpen: () => void;
+}) {
+  const currentAi = new Set(planAiCapabilities(current, plans));
+  const gained = planAiCapabilities(next, plans).filter(
+    (capability) =>
+      !currentAi.has(capability) && !capability.startsWith("Everything in"),
+  );
+
+  const currentCapacity = planCapacity(current, platform);
+  const nextCapacity = planCapacity(next, platform);
+
+  return (
+    <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Next step up
+      </p>
+      <h3 className="mt-1 font-display text-sm font-semibold">
+        {planPresentation[next.code]?.name ?? next.code}
+      </h3>
+
+      <dl className="mt-3 grid gap-1 text-xs sm:grid-cols-2">
+        {nextCapacity.map((row, index) => (
+          <div key={row.key} className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">{row.label}</dt>
+            <dd className="tabular-nums">
+              <span className="text-muted-foreground">
+                {currentCapacity[index]?.value}
+              </span>
+              <span className="text-muted-foreground"> → </span>
+              <span className="font-medium">{row.value}</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      {gained.length > 0 && (
+        <ul className="mt-3 space-y-1.5 border-t border-primary/20 pt-3">
+          {gained.slice(0, 4).map((capability) => (
+            <li key={capability} className="flex items-start gap-2 text-xs">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" />
+              {capability}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Button
+        size="sm"
+        variant="outline"
+        className="mt-4 font-semibold"
+        onClick={onOpen}
+      >
+        Compare all plans
+        <ArrowUpRight className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 function PlanPanel({ platform }: { platform: Platform }) {
   const { user } = useAuth();
   const { data: session } = useSession(!!user);
@@ -315,12 +517,18 @@ function PlanPanel({ platform }: { platform: Platform }) {
     "Free";
   const plan = plans?.find((row) => row.code === planCode);
   const presentation = planPresentation[planCode];
+  const next = nextPlanUp(plans, platform, planCode);
+
+  const usage = useAuditPlanUsage(
+    platform === "audit" && !!session && !session.needsOnboarding,
+  );
 
   const Icon = platform === "accounting" ? Calculator : ShieldCheck;
   const accent = platform === "accounting" ? "text-emerald-500" : "text-sky-500";
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["billing-overview"] });
+    queryClient.invalidateQueries({ queryKey: ["audit-plan-usage"] });
     queryClient.invalidateQueries({ queryKey: ["session"] });
   };
 
@@ -390,16 +598,72 @@ function PlanPanel({ platform }: { platform: Platform }) {
             ))}
           </div>
         ) : plan ? (
-          <ul className="space-y-2">
-            {planFeatures(plan, platform)
-              .slice(0, 6)
-              .map((feature) => (
-                <li key={feature} className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
-                  <span className="text-sm">{feature}</span>
-                </li>
-              ))}
-          </ul>
+          <>
+            <dl className="grid gap-2 sm:grid-cols-2">
+              {planCapacity(plan, platform).map((row) => {
+                const measure = usageFor(usage.data, row.key);
+
+                return (
+                  <div
+                    key={row.key}
+                    className="rounded-xl border border-border/60 p-3"
+                  >
+                    <dt className="text-xs text-muted-foreground">{row.label}</dt>
+                    <dd className="mt-0.5 font-display text-lg font-semibold tabular-nums">
+                      {measure
+                        ? formatMeasure(row.key, measure.used)
+                        : row.value}
+                      {measure && (
+                        <span className="text-sm font-normal text-muted-foreground">
+                          {" / "}
+                          {row.value}
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+
+            <div className="mt-5">
+              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Sparkles className="h-3.5 w-3.5" />
+                What AI can do on this plan
+              </p>
+              {platform === "audit" && planAiCapacity(plan) && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {planAiCapacity(plan)}
+                </p>
+              )}
+              <ul className="mt-2 space-y-2">
+                {(platform === "audit"
+                  ? planAiCapabilities(plan, plans)
+                  : planFeatures(plan, platform, plans)
+                )
+                  .slice(0, 6)
+                  .map((capability) => (
+                    <li key={capability} className="flex items-start gap-2.5">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+                      <span className="text-sm">{capability}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+
+            {platform === "audit" && usage.data && (
+              <CurrentUsage usage={usage.data} />
+            )}
+
+            {next && canManage && (
+              <UpgradePreview
+                current={plan}
+                next={next}
+                platform={platform}
+                plans={plans ?? []}
+                onOpen={() => setPickerOpen(true)}
+              />
+            )}
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">
             Plan details are unavailable right now.
@@ -590,9 +854,9 @@ export default function BillingPage() {
       <CrossSellCard />
 
       <p className="text-xs text-muted-foreground">
-        Payments are processed by Stripe. Plan limits shown here are read from
-        the server and enforced by the server — a subscription becomes active
-        only when Stripe confirms the payment.
+        Payments are processed by Stripe. Plan limits and AI capabilities shown
+        here are read from the server and enforced by the server — a
+        subscription becomes active only when Stripe confirms the payment.
       </p>
     </div>
   );

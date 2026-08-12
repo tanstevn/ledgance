@@ -27,6 +27,37 @@ export const useBillingOverview = (enabled = true) =>
     retry: false,
   });
 
+export interface PlanUsageMeasure {
+  key: string;
+  used: number;
+  /** -1 means unlimited, matching the entitlement value the server enforces. */
+  limit: number;
+}
+
+export interface AuditPlanUsage {
+  plan: string;
+  /** When the AI allowance refills — the billing period end where there is one. */
+  aiPeriodResetsAt: string | null;
+  measures: PlanUsageMeasure[];
+}
+
+/**
+ * What the organization is consuming against its Audit plan. Counted server-side, so the
+ * numbers shown are the numbers enforced.
+ */
+export const useAuditPlanUsage = (enabled = true) =>
+  useApiQuery<AuditPlanUsage>("/api/audit/subscription/usage", {
+    queryKey: ["audit-plan-usage"],
+    enabled,
+    retry: false,
+  });
+
+export const usageFor = (
+  usage: AuditPlanUsage | undefined,
+  key: string,
+): PlanUsageMeasure | undefined =>
+  usage?.measures.find((measure) => measure.key === key);
+
 export const moduleOf = (platform: Platform): "Audit" | "Accounting" =>
   platform === "accounting" ? "Accounting" : "Audit";
 

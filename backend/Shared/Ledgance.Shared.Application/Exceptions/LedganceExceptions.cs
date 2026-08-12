@@ -51,4 +51,15 @@ namespace Ledgance.Shared.Application.Exceptions {
         public static EntitlementException LimitReached(string entitlement, long limit) =>
             new($"Your current plan allows up to {limit} for '{entitlement}'.");
     }
+
+    /// <summary>
+    /// The organization has spent its AI allowance for the current period. It is an
+    /// <see cref="EntitlementException"/> so it still surfaces as HTTP 402, but the message
+    /// carries what the user needs to act on — how much the operation wanted, when the allowance
+    /// refills, and what the next plan up provides. Nothing internal is exposed.
+    /// </summary>
+    public sealed class AiUsageLimitException : EntitlementException {
+        public AiUsageLimitException(string message)
+            : base(message) { }
+    }
 }

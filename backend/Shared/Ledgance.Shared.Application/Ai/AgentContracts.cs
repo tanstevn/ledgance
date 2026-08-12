@@ -31,14 +31,19 @@ namespace Ledgance.Shared.Application.Ai {
         string Goal,
         string SystemPrompt,
         IReadOnlyList<AgentTool> Tools,
-        int MaxToolSteps = 8);
+        int MaxToolSteps = 8,
+        string RequiredReportScope = AiReportScopes.None,
+        long Cost = 1,
+        Guid? ClientId = null,
+        Guid? EngagementId = null);
 
     public sealed record AgentRunResult(
         string Answer,
         IReadOnlyList<AgentStep> Steps,
         string Provider,
         string Model,
-        int TurnsUsed);
+        int TurnsUsed,
+        AiUsageCharge? Usage = null);
 
     /// <summary>
     /// A provider that can drive an agent loop: given the goal, the tool catalog and the

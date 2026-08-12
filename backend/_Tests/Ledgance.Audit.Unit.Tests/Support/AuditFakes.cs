@@ -1,3 +1,5 @@
+using Ledgance.Audit.AI.Application.Ports;
+using Ledgance.Audit.AI.Domain;
 using Ledgance.Audit.Client.Application.Ports;
 using Ledgance.Audit.Engagement.Application.Ports;
 using Ledgance.Audit.Engagement.Domain;
@@ -5,6 +7,7 @@ using Ledgance.Shared.Application.Activity;
 using Ledgance.Shared.Application.Identity;
 using DomainClient = Ledgance.Audit.Client.Domain.AuditClient;
 using DomainEngagement = Ledgance.Audit.Engagement.Domain.Engagement;
+using DomainEvidence = Ledgance.Audit.Engagement.Domain.Evidence;
 
 namespace Ledgance.Audit.Unit.Tests.Support {
     public sealed class RecordingActivityRecorder : IActivityRecorder {
@@ -161,6 +164,9 @@ namespace Ledgance.Audit.Unit.Tests.Support {
             IEnumerable<Guid> clientIds, CancellationToken ct) =>
             Task.FromResult<IReadOnlyDictionary<Guid, string>>(clientIds
                 .ToDictionary(id => id, _ => "Client"));
+
+        public Task<long> CountActiveAsync(CancellationToken ct) =>
+            Task.FromResult((long)ActiveClients.Count);
     }
 
     public sealed class StubProgressReader : IEngagementProgressReader {
@@ -204,6 +210,119 @@ namespace Ledgance.Audit.Unit.Tests.Support {
             Imports.Add(import);
             return Task.CompletedTask;
         }
+    }
+
+    public sealed class InMemoryProcedureRepository : IProcedureRepository {
+        public List<AuditProcedure> Procedures { get; } = [];
+
+        public Task<AuditProcedure?> FindAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(Procedures.FirstOrDefault(procedure => procedure.Id == id));
+
+        public Task<IReadOnlyList<AuditProcedure>> ListAsync(Guid engagementId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<AuditProcedure>>(Procedures
+                .Where(procedure => procedure.EngagementId == engagementId)
+                .ToList());
+
+        public Task AddAsync(AuditProcedure procedure, CancellationToken ct) {
+            Procedures.Add(procedure);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(AuditProcedure procedure, CancellationToken ct) =>
+            Task.CompletedTask;
+    }
+
+    public sealed class InMemoryWorkingPaperRepository : IWorkingPaperRepository {
+        public List<WorkingPaper> Papers { get; } = [];
+
+        public Task<WorkingPaper?> FindAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(Papers.FirstOrDefault(paper => paper.Id == id));
+
+        public Task<IReadOnlyList<WorkingPaper>> ListAsync(Guid engagementId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<WorkingPaper>>(Papers
+                .Where(paper => paper.EngagementId == engagementId)
+                .ToList());
+
+        public Task AddAsync(WorkingPaper paper, CancellationToken ct) {
+            Papers.Add(paper);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(WorkingPaper paper, CancellationToken ct) =>
+            Task.CompletedTask;
+    }
+
+    public sealed class InMemoryEvidenceRepository : IEvidenceRepository {
+        public List<DomainEvidence> Items { get; } = [];
+
+        public Task<DomainEvidence?> FindAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(Items.FirstOrDefault(item => item.Id == id));
+
+        public Task<IReadOnlyList<DomainEvidence>> ListAsync(Guid engagementId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<DomainEvidence>>(Items
+                .Where(item => item.EngagementId == engagementId)
+                .ToList());
+
+        public Task<DomainEvidence?> FindByFileNameAsync(Guid engagementId, string fileName,
+            CancellationToken ct) =>
+            Task.FromResult(Items.FirstOrDefault(item =>
+                item.EngagementId == engagementId && item.FileName == fileName));
+
+        public Task<long> SumSizeBytesAsync(CancellationToken ct) =>
+            Task.FromResult(Items.Sum(item => item.SizeBytes));
+
+        public Task AddAsync(DomainEvidence evidence, CancellationToken ct) {
+            Items.Add(evidence);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(DomainEvidence evidence, CancellationToken ct) =>
+            Task.CompletedTask;
+    }
+
+    public sealed class InMemoryFindingRepository : IFindingRepository {
+        public List<Finding> Findings { get; } = [];
+
+        public Task<Finding?> FindAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(Findings.FirstOrDefault(finding => finding.Id == id));
+
+        public Task<IReadOnlyList<Finding>> ListAsync(Guid engagementId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Finding>>(Findings
+                .Where(finding => finding.EngagementId == engagementId)
+                .ToList());
+
+        public Task AddAsync(Finding finding, CancellationToken ct) {
+            Findings.Add(finding);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(Finding finding, CancellationToken ct) =>
+            Task.CompletedTask;
+    }
+
+    public sealed class InMemoryGeneratedReportRepository : IGeneratedReportRepository {
+        public List<GeneratedAuditReport> Reports { get; } = [];
+
+        public Task<GeneratedAuditReport?> FindAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult(Reports.FirstOrDefault(report => report.Id == id));
+
+        public Task<IReadOnlyList<GeneratedAuditReport>> ListAsync(Guid engagementId,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<GeneratedAuditReport>>(Reports
+                .Where(report => report.EngagementId == engagementId)
+                .ToList());
+
+        public Task AddAsync(GeneratedAuditReport report, CancellationToken ct) {
+            Reports.Add(report);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(GeneratedAuditReport report, CancellationToken ct) =>
+            Task.CompletedTask;
     }
 
     public sealed class StubOrganizationDirectory : IOrganizationDirectory {

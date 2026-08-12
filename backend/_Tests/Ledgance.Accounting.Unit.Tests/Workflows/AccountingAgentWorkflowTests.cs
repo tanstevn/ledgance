@@ -1,4 +1,4 @@
-using Ledgance.Accounting.AI.Application.Agent;
+﻿using Ledgance.Accounting.AI.Application.Agent;
 using Ledgance.Accounting.AI.Application.Assistant;
 using Ledgance.Accounting.AI.Domain;
 using Ledgance.Accounting.Ledger.Application;
@@ -17,6 +17,8 @@ using Microsoft.Extensions.Options;
 namespace Ledgance.Accounting.Unit.Tests.Workflows {
     public class AccountingAgentWorkflowTests {
         private readonly InMemoryAiUsageMeter _usage = new();
+        private readonly StubAiUsagePeriodResolver _periods = new();
+        private readonly StubAiOperationCosts _costs = new();
         private readonly FakeAgentToolClient _openClaw = new(AiProviders.OpenClaw);
 
         private static CurrentUser Member() =>
@@ -34,7 +36,7 @@ namespace Ledgance.Accounting.Unit.Tests.Workflows {
                     Result<IEnumerable<AccountingAiCapabilityRow>>,
                     GetAccountingAiCapabilitiesQueryHandler>()
                 .WithService<IAgentRunner>(new AgentRunnerService(harness.Harness.CurrentUser,
-                    harness.Entitlements, _usage,
+                    harness.Entitlements, _usage, _periods, _costs,
                     new ConfiguredAiModelRouter(Options.Create(new AiSettings())),
                     [_openClaw], [], NullLogger<AgentRunnerService>.Instance));
 
@@ -135,7 +137,7 @@ namespace Ledgance.Accounting.Unit.Tests.Workflows {
 
             Assert.Contains(harness.Activity.Entries,
                 entry => entry.Action == "ai.agent");
-            Assert.Equal(2, _usage.UsedNow(TestIdentity.DefaultOrganizationId,
+            Assert.Equal(1, _usage.UsedNow(TestIdentity.DefaultOrganizationId,
                 ProductModule.Accounting));
         }
 

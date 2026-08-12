@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Ledgance.Audit.AI.Domain;
 using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Application.Ports;
@@ -32,7 +32,7 @@ namespace Ledgance.Audit.AI.Application.Analysis {
             List<AiDocument> context, string activityAction, string activitySummary,
             CancellationToken ct) {
             var completion = await Ai.CompleteAsync(AuditAiPrompts.Workload(capability,
-                instruction, userPrompt, context), ct);
+                instruction, userPrompt, context, engagementId), ct);
 
             await Activity.RecordAsync(new ActivityEntry("Audit", activityAction,
                 "Engagement", engagementId, activitySummary, engagementId), ct);
@@ -214,49 +214,136 @@ namespace Ledgance.Audit.AI.Application.Analysis {
         }
     }
 
-    [RequiresPermission(AuditEngagementPermissions.Manage)]
+    [RequiresPermission(AuditEngagementPermissions.Read)]
     [RequiresEntitlement(ProductModule.Audit, Entitlements.AiEnabled)]
-    public class DraftAuditReportCommand : ICommand<Result<AiProposalResult>> {
+    public class AnalyzeEvidenceCommand : ICommand<Result<AiProposalResult>> {
         public Guid EngagementId { get; set; }
     }
 
-    public class DraftAuditReportCommandValidator : AbstractValidator<DraftAuditReportCommand> {
-        public DraftAuditReportCommandValidator() {
+    public class AnalyzeEvidenceCommandValidator : AbstractValidator<AnalyzeEvidenceCommand> {
+        public AnalyzeEvidenceCommandValidator() {
             RuleFor(x => x.EngagementId).NotEmpty();
         }
     }
 
-    public class DraftAuditReportCommandHandler : EngagementAnalysisHandlerBase,
-        IRequestHandler<DraftAuditReportCommand, Result<AiProposalResult>> {
-        private readonly IFindingRepository _findings;
+    /// <summary>
+    /// Evidence coverage read across the whole engagement rather than one document at a time:
+    /// which risks and procedures have evidence behind them and which do not.
+    /// </summary>
+    public class AnalyzeEvidenceCommandHandler : EngagementAnalysisHandlerBase,
+        IRequestHandler<AnalyzeEvidenceCommand, Result<AiProposalResult>> {
+        private readonly IRiskRepository _risks;
+        private readonly IProcedureRepository _procedures;
+        private readonly IEvidenceRepository _evidence;
+        private readonly IWorkingPaperRepository _papers;
 
-        public DraftAuditReportCommandHandler(IAiCompletionService ai,
+        public AnalyzeEvidenceCommandHandler(IAiCompletionService ai,
             IEngagementAccessGuard access, IEngagementRepository engagements,
-            IClientLookup clients, IActivityRecorder activity, IFindingRepository findings)
+            IClientLookup clients, IActivityRecorder activity, IRiskRepository risks,
+            IProcedureRepository procedures, IEvidenceRepository evidence,
+            IWorkingPaperRepository papers)
             : base(ai, access, engagements, clients, activity) {
-            _findings = findings;
+            _risks = risks;
+            _procedures = procedures;
+            _evidence = evidence;
+            _papers = papers;
         }
 
-        public async Task<Result<AiProposalResult>> HandleAsync(DraftAuditReportCommand request,
+        public async Task<Result<AiProposalResult>> HandleAsync(AnalyzeEvidenceCommand request,
             CancellationToken ct) {
             await Access.EnsureMemberAsync(request.EngagementId, ct);
 
-            var context = await EngagementAiContext.OverviewAsync(request.EngagementId,
+            var overview = EngagementAiContext.OverviewAsync(request.EngagementId,
                 Engagements, Clients, ct);
+            var risks = EngagementAiContext.RisksAsync(request.EngagementId, _risks, ct);
+            var procedures = EngagementAiContext.ProceduresAsync(request.EngagementId,
+                _procedures, ct);
+            var evidence = EngagementAiContext.EvidenceAsync(request.EngagementId, _evidence, ct);
+            var papers = EngagementAiContext.WorkingPapersAsync(request.EngagementId, _papers, ct);
 
-            if (await EngagementAiContext.FindingsAsync(request.EngagementId, _findings, ct)
-                is { } findings) {
-                context.Add(findings);
+            await Task.WhenAll(overview, risks, procedures, evidence, papers);
+
+            var context = new List<AiDocument>(overview.Result);
+
+            foreach (var document in new[] {
+                risks.Result, procedures.Result, evidence.Result, papers.Result
+            }) {
+                if (document is not null) {
+                    context.Add(document);
+                }
             }
 
-            return await RunAsync(request.EngagementId, AuditAiCapabilities.ReportDraft,
-                "Draft audit report sections from the engagement results: a suggested " +
-                "opinion (with reasoning), basis for opinion, and key audit matters derived " +
-                "from the significant findings. Mark every judgment reserved to the " +
-                "engagement partner with [PARTNER JUDGMENT]. The draft is a starting point " +
-                "for the partner, not an opinion.",
-                "Draft the audit report for this engagement.",
-                context, "ai.report_draft", "generated an AI audit report draft.", ct);
+            return await RunAsync(request.EngagementId, AuditAiCapabilities.EvidenceAnalysis,
+                "Assess the evidence held on this engagement: which procedures and risks are " +
+                "supported by evidence, which are not, where the evidence looks thin for the " +
+                "significance of what it supports, and which evidence items are attached to " +
+                "nothing. Base every statement on the evidence register as given.",
+                "Where are the evidence gaps on this engagement?",
+                context, "ai.evidence_analysis", "generated an AI evidence-gap analysis.", ct);
+        }
+    }
+
+    [RequiresPermission(AuditEngagementPermissions.Read)]
+    [RequiresEntitlement(ProductModule.Audit, Entitlements.AiEnabled)]
+    public class AnalyzeEngagementCommand : ICommand<Result<AiProposalResult>> {
+        public Guid EngagementId { get; set; }
+        public string? Question { get; set; }
+    }
+
+    public class AnalyzeEngagementCommandValidator
+        : AbstractValidator<AnalyzeEngagementCommand> {
+        public AnalyzeEngagementCommandValidator() {
+            RuleFor(x => x.EngagementId).NotEmpty();
+            RuleFor(x => x.Question).MaximumLength(2000);
+        }
+    }
+
+    /// <summary>
+    /// Engagement intelligence: the whole record in one pass, so the answer can connect a risk
+    /// to the procedure that responds to it, the evidence behind it and the finding it produced,
+    /// instead of treating each document on its own.
+    /// </summary>
+    public class AnalyzeEngagementCommandHandler
+        : IRequestHandler<AnalyzeEngagementCommand, Result<AiProposalResult>> {
+        private readonly IAiCompletionService _ai;
+        private readonly IEngagementAccessGuard _access;
+        private readonly EngagementReadSet _reads;
+        private readonly IActivityRecorder _activity;
+
+        public AnalyzeEngagementCommandHandler(IAiCompletionService ai,
+            IEngagementAccessGuard access, EngagementReadSet reads,
+            IActivityRecorder activity) {
+            _ai = ai;
+            _access = access;
+            _reads = reads;
+            _activity = activity;
+        }
+
+        public async Task<Result<AiProposalResult>> HandleAsync(AnalyzeEngagementCommand request,
+            CancellationToken ct) {
+            await _access.EnsureMemberAsync(request.EngagementId, ct);
+
+            var context = await EngagementAiContext.FullAsync(request.EngagementId, _reads, ct);
+
+            if (context.Count == 0) {
+                return Result<AiProposalResult>.Error("The engagement was not found.");
+            }
+
+            var completion = await _ai.CompleteAsync(AuditAiPrompts.Workload(
+                AuditAiCapabilities.EngagementIntelligence,
+                "Answer using the engagement as a whole. Connect risks to the procedures that " +
+                "respond to them, the working papers and evidence behind those procedures, " +
+                "and the findings they produced. Point out where those connections are " +
+                "missing. Distinguish what the record states from what you infer from it.",
+                request.Question ?? "What does the engagement record show as a whole?",
+                context, request.EngagementId), ct);
+
+            await _activity.RecordAsync(new ActivityEntry("Audit", "ai.engagement_intelligence",
+                "Engagement", request.EngagementId,
+                "generated an AI engagement-wide analysis.", request.EngagementId), ct);
+
+            return Result<AiProposalResult>.Success(
+                AiProposalResult.From(AuditAiCapabilities.EngagementIntelligence, completion));
         }
     }
 }

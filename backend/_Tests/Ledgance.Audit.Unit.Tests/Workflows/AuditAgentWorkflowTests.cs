@@ -1,4 +1,4 @@
-using Ledgance.Audit.AI.Application.Agent;
+﻿using Ledgance.Audit.AI.Application.Agent;
 using Ledgance.Audit.AI.Application.Assistant;
 using Ledgance.Audit.AI.Domain;
 using Ledgance.Audit.Engagement.Application;
@@ -27,6 +27,8 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
         private readonly InMemoryTrialBalanceRepository _trialBalances = new();
         private readonly RecordingActivityRecorder _activity = new();
         private readonly InMemoryAiUsageMeter _usage = new();
+        private readonly StubAiUsagePeriodResolver _periods = new();
+        private readonly StubAiOperationCosts _costs = new();
         private readonly FakeAgentToolClient _openClaw = new(AiProviders.OpenClaw);
 
         private static CurrentUser Member() =>
@@ -64,7 +66,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
                 new EngagementAccessGuard(_team, harness.CurrentUser));
 
             harness.WithService<IAgentRunner>(new AgentRunnerService(harness.CurrentUser,
-                harness.Entitlements, _usage,
+                harness.Entitlements, _usage, _periods, _costs,
                 new ConfiguredAiModelRouter(Options.Create(new AiSettings())),
                 [_openClaw], [], NullLogger<AgentRunnerService>.Instance));
 
@@ -81,7 +83,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
         public async Task A_non_team_member_cannot_run_the_agent() {
             var engagement = SeedEngagement();
             var harness = Harness(Member());
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
 
             await Assert.ThrowsAsync<ForbiddenException>(
                 () => harness.SendAsync(Command(engagement.Id)));
@@ -94,7 +96,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
             var user = Member();
             var engagement = SeedEngagement(user.UserId);
             var harness = Harness(user);
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditOrganization);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditSmall);
 
             await Assert.ThrowsAsync<EntitlementException>(
                 () => harness.SendAsync(Command(engagement.Id)));
@@ -113,7 +115,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
                 user.UserId));
 
             var harness = Harness(user);
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
 
             _openClaw.Turns.Enqueue(new AgentTurn(null,
                 new AgentToolCall("get_trial_balance", "{}")));
@@ -131,7 +133,10 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
             Assert.Contains("1000", step.Result);
 
             Assert.Contains(_activity.Entries, entry => entry.Action == "ai.agent");
-            Assert.Equal(2, _usage.UsedNow(TestIdentity.DefaultOrganizationId,
+
+            // One reservation for the whole run, at the capability's cost — not one per turn.
+            Assert.Equal(AuditAiCapabilities.Agent.Cost,
+                _usage.UsedNow(TestIdentity.DefaultOrganizationId,
                 ProductModule.Audit));
         }
 
@@ -140,7 +145,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
             var user = Member();
             var engagement = SeedEngagement(user.UserId);
             var harness = Harness(user);
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
 
             _openClaw.Turns.Enqueue(new AgentTurn(null,
                 new AgentToolCall("get_trial_balance", "{}")));
@@ -157,12 +162,12 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
         public async Task The_capability_catalog_includes_the_agent_only_at_agentic_plans() {
             var harness = Harness(Member());
 
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditOrganization);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditSmall);
             var reasoning = (await harness.SendAsync(new GetAuditAiCapabilitiesQuery()))
                 .Data!.Single(row => row.Key == AuditAiCapabilities.Agent.Key);
             Assert.False(reasoning.Included);
 
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
             var agentic = (await harness.SendAsync(new GetAuditAiCapabilitiesQuery()))
                 .Data!.Single(row => row.Key == AuditAiCapabilities.Agent.Key);
             Assert.True(agentic.Included);

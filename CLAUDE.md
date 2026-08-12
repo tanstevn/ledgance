@@ -156,14 +156,22 @@ Error mapping: 400 validation/argument · 401 `UnauthenticatedException` · 403
 
 ## Subscriptions and entitlements
 
-Plans: Audit — Free, Professional (≤30 users), Organization (≤75), Firm (≤150), Enterprise.
-Accounting — Free, Solo ($14.99/mo), Team, Professional, Enterprise. Enterprise is Contact Sales.
+Plans: Audit — Free, Micro (15 users), Micro-Growth (40), Small (90), Medium (150),
+Medium-Growth (200), Enterprise. Accounting — Free, Solo ($14.99/mo), Team, Professional,
+Enterprise. Enterprise is Contact Sales. `Free` is one shared plan code across both products.
 
 - `SubscriptionPlanCatalog` is the **only** place plan values are declared.
 - Resolution: catalogue defaults → `Subscriptions:Plans:*` configuration → per-organization
   `entitlement_overrides`. A non-Active/Trialing subscription resolves to Free.
 - Capabilities gate via `[RequiresEntitlement]`. Numeric limits are checked in handlers with
   `EntitlementSet.RequireWithinLimit`. `-1` is unlimited; an unknown key reads `0` (fails closed).
+- Three entitlements are **ordered ladders**, not booleans: `ai_max_tier`, `ai_report_scope` and
+  `ai_analysis_scope` (ADR-027). They are independent — a plan can buy deeper reasoning without
+  buying a wider view. A granted value outside its ladder ranks below every level, so an
+  unrecognised grant denies rather than escalates.
+- `ai_monthly_units` is an allowance of **AI credits**, not requests. Each capability declares
+  its cost where it is declared; credits are reserved atomically before the provider is called
+  and released only when nothing ran (ADR-029). Never charge per request.
 - **Free plans must be genuinely useful.** Upgrade pressure comes from scale, depth and AI, never
   from blocking a core workflow midway.
 
@@ -194,6 +202,13 @@ and large context · OpenClaw = agentic orchestration.
 AI reads only what the requesting user could already read. AI output is a **proposal**: a human
 accepts anything material, and the acceptance is recorded. Agents act through whitelisted
 application capabilities, never directly against the database.
+
+`AiEntitlementGate` is the single plan check every AI workload passes, whether it runs as one
+completion or an agent loop. AI-generated audit reports above section level are **persisted
+drafts** requiring review by an engagement Manager or Partner (ADR-028); accepting one records
+who took responsibility and never finalizes the audit report. Report prompts forbid inventing
+evidence, procedures, findings, amounts or conclusions — a gap is marked
+`[NOT IN THE ENGAGEMENT RECORD: …]`, never filled.
 
 See `docs/ai-architecture.md` for what is implemented versus planned.
 

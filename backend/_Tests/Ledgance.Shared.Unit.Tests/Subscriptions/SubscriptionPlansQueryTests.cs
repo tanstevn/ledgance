@@ -1,4 +1,4 @@
-using Ledgance.Shared.Application.Subscriptions;
+﻿using Ledgance.Shared.Application.Subscriptions;
 using Ledgance.TestInfrastructure;
 
 namespace Ledgance.Shared.Unit.Tests.Subscriptions {
@@ -21,14 +21,47 @@ namespace Ledgance.Shared.Unit.Tests.Subscriptions {
             Assert.False(plans["Free"].RequiresContactSales);
 
             Assert.Equal("Accounting", plans["AccountingSolo"].Module);
-            Assert.Equal("Audit", plans["AuditProfessional"].Module);
+            Assert.Equal("Audit", plans["AuditMicro"].Module);
 
             Assert.True(plans["AuditEnterprise"].RequiresContactSales);
             Assert.True(plans["AccountingEnterprise"].RequiresContactSales);
 
             Assert.Equal("3", plans["AccountingSolo"].Entitlements[Entitlements.MaxEntities]);
-            Assert.Equal("30",
-                plans["AuditProfessional"].Entitlements[Entitlements.MaxUsers]);
+            Assert.Equal("15",
+                plans["AuditMicro"].Entitlements[Entitlements.MaxUsers]);
+        }
+
+        /// <summary>
+        /// The pricing page renders from this payload, so the AI entitlements it advertises have
+        /// to be the ones the server gates on.
+        /// </summary>
+        [Fact]
+        public async Task Every_plan_publishes_the_ai_entitlements_the_server_enforces() {
+            var result = await Handler()
+                .HandleAsync(new GetSubscriptionPlansQuery(), CancellationToken.None);
+
+            var plans = result.Data!.ToDictionary(plan => plan.Code);
+
+            foreach (var plan in plans.Values) {
+                Assert.Contains(Entitlements.AiMaxTier, plan.Entitlements.Keys);
+                Assert.Contains(Entitlements.AiReportScope, plan.Entitlements.Keys);
+                Assert.Contains(Entitlements.AiAnalysisScope, plan.Entitlements.Keys);
+            }
+
+            Assert.Equal(AiReportScopes.None,
+                plans["Free"].Entitlements[Entitlements.AiReportScope]);
+            Assert.Equal(AiReportScopes.Sections,
+                plans["AuditMicro"].Entitlements[Entitlements.AiReportScope]);
+            Assert.Equal(AiReportScopes.FullDraft,
+                plans["AuditMicroGrowth"].Entitlements[Entitlements.AiReportScope]);
+            Assert.Equal(AiReportScopes.Engagement,
+                plans["AuditSmall"].Entitlements[Entitlements.AiReportScope]);
+            Assert.Equal(AiReportScopes.Portfolio,
+                plans["AuditMedium"].Entitlements[Entitlements.AiReportScope]);
+            Assert.Equal(AiReportScopes.Agentic,
+                plans["AuditMediumGrowth"].Entitlements[Entitlements.AiReportScope]);
+            Assert.Equal(AiReportScopes.Custom,
+                plans["AuditEnterprise"].Entitlements[Entitlements.AiReportScope]);
         }
 
         [Fact]
@@ -43,7 +76,7 @@ namespace Ledgance.Shared.Unit.Tests.Subscriptions {
             Assert.True(plans["AccountingSolo"].Purchasable);
             Assert.False(plans["Free"].Purchasable);
             Assert.False(plans["AccountingEnterprise"].Purchasable);
-            Assert.False(plans["AuditProfessional"].Purchasable);
+            Assert.False(plans["AuditMicro"].Purchasable);
         }
 
         [Fact]

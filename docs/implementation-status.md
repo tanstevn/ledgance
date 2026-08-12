@@ -3,12 +3,12 @@
 Phase tracker. Detail about the current implementation lives in `project-state.md`; product
 intent lives in `project-context.md`.
 
-**Last verified:** 2026-08-11, by running `dotnet build` and `dotnet test` on
-`backend/Ledgance.slnx` (**275 tests passing** — 92 shared, 81 audit, 90 accounting,
-12 integration), `next build` (19 routes), `npx tsc --noEmit` and ESLint in `frontend/` — all
-clean — then reading the repository.
+**Last verified:** 2026-08-13, by running `dotnet build` and `dotnet test` on
+`backend/Ledgance.slnx` (**373 tests passing** — 126 shared, 145 audit, 90 accounting,
+12 integration), `next build`, `npx tsc --noEmit` and ESLint in `frontend/` — all clean — then
+reading the repository and rendering the plan catalogue against a locally running API.
 
-Test counts in the per-phase rows are the totals *at the end of that phase*; **275** is the
+Test counts in the per-phase rows are the totals *at the end of that phase*; **373** is the
 current total.
 
 | # | Phase | Status |
@@ -24,6 +24,8 @@ current total.
 | — | Post-Phase 8 live bring-up & product UX | **Completed** — first live Supabase run (four defects fixed), product workspaces, AI/agent UI, activity feeds, platform scoping, auth redesign |
 | 9 | Stripe & Subscriptions | **Completed** — 261 tests passing; verified against a fake provider, never against a live Stripe account |
 | — | Post-Phase 9 product & performance rounds | **Completed** — live Stripe prices, two billing defects fixed, activity phrasing, engagement file restructure, documents versioning UI, navigation latency |
+| 9.5 | Audit AI report generation, plan entitlements & billing experience | **Completed** — 345 tests passing; Audit plan ladder replaced, AI gated on three ordered entitlements, generated reports persisted under review, billing page rebuilt |
+| 9.5.1 | Audit AI usage, credits & consumption entitlements | **Completed** — 373 tests passing; per-operation AI credit costs, atomic reservation, subscription-aligned usage periods, usage visibility |
 | 10 | Security & Authorization Review | Not Started |
 | 11 | Testing & Quality | Not Started |
 | 12 | Product Polish | Not Started |
@@ -46,7 +48,7 @@ Delivered:
   `supabase/migrations/0001_foundation.sql`.
 - **Supabase data access** — official Supabase C# client, no EF Core; a reusable tenant-scoped
   repository that still exposes the native query builder.
-- **Entitlement foundation** — all nine plans in one `SubscriptionPlanCatalog`, resolution
+- **Entitlement foundation** — every plan in one `SubscriptionPlanCatalog`, resolution
   through catalogue → configuration → per-organization overrides, capability gating via
   `[RequiresEntitlement]` and limit checks via `EntitlementSet`, surfaced as HTTP 402.
 - **Shared application foundation** — four pipeline behaviors (logging, authorization,
@@ -301,6 +303,126 @@ endpoints exist and are unused by the frontend), and Stripe (Phase 9).
 Outstanding risk: live verification stops after audit client creation — journal posting, storage
 uploads, reconciliation and the linked-books import have not been exercised against the live
 project, and no AI call has run against a live provider.
+
+---
+
+## Phase 9.5 — Audit AI report generation, plan entitlements and billing (Completed)
+
+Audit-only. Accounting's plan restructure and AI-per-plan strategy were explicitly out of scope
+and remain to be done.
+
+**Audit plan structure**
+
+- The ladder is now Free → Micro → Micro-Growth → Small → Medium → Medium-Growth → Enterprise.
+  `AuditProfessional`, `AuditOrganization` and `AuditFirm` were removed; a stored row naming one
+  resolves to Free in code, and migration `0011` maps existing rows onto the closest new plan.
+- Capacity (users / clients / engagements / storage): Free 3 / 1 / 2 / 5 GB · Micro 15 / 30 / 75
+  / 250 GB · Micro-Growth 40 / 100 / 300 / 500 GB · Small 90 / 250 / 800 / 750 GB · Medium 150 /
+  500 / 1,300 / 2 TB · Medium-Growth 200 / unlimited / unlimited / 6 TB · Enterprise unlimited.
+- `SubscriptionPlanCatalog` gained `Ordered(module)` and `NextAbove(plan)`, so upgrade surfaces
+  read "the next plan up" from the catalogue instead of reconstructing it.
+- Raising Audit Free to 3 users and 5 GB also raised Accounting Free, because `Free` is one
+  shared plan code. An increase, not a restriction; no other Accounting value changed.
+
+**AI entitlements (ADR-027)**
+
+- Two new ordered entitlements beside `ai_max_tier`: `ai_report_scope` and `ai_analysis_scope`.
+  A capability declares what it needs on each; a plan includes it only when it grants all three.
+- `AiEntitlementGate` is the single plan check for both `AiCompletionService` and
+  `AgentRunnerService`, so one completion and an agent loop are gated identically.
+- A granted value outside its ladder ranks below every level — a configuration typo or a
+  tampered per-organization override denies rather than escalating.
+
+**Audit AI capabilities: 11 → 25**
+
+- Free adds finding summaries, engagement summaries, engagement notes and working-paper wording
+  assistance (wording only rewrites the text it is given, which is what makes it safe on Free
+  while structured drafting is not).
+- Micro adds audit-planning and materiality assistance, and single report sections.
+- Micro-Growth adds engagement-wide intelligence, evidence-gap analysis, complete draft reports,
+  section regeneration and report consistency checking.
+- Small adds full engagement reporting for management and reviewers.
+- Medium adds portfolio intelligence and client/firm reporting.
+- Medium-Growth adds agentic report generation.
+- `GET /api/audit/ai/capabilities` now returns `requiredPlan` — the cheapest plan including the
+  capability, resolved from the catalogue — so the UI names the upgrade without plan rules.
+
+**AI report generation (ADR-028, migration `0011`)**
+
+- `GeneratedAuditReport` (Audit.AI.Domain) persists structured sections with the engagement
+  records each cites, plus the provider and model. Stored through
+  `Ledgance.Audit.AI.Infrastructure`, which had been an empty project until now.
+- A draft leaves `Draft` only through review by an engagement **Manager or Partner**;
+  organization Admin/Owner oversight is read access, not review authority. Accepting records
+  responsibility and never writes `audit_reports` — `FinalizeAuditReportCommand` is unchanged.
+- Report prompts forbid inventing evidence, procedures, findings, amounts, client details or
+  conclusions; a gap is written `[NOT IN THE ENGAGEMENT RECORD: …]`, partner-reserved judgments
+  are marked `[PARTNER JUDGMENT]`, and each section cites its sources.
+- Agentic generation reuses `AuditAgentTools` — the same read-only, mediator-dispatched tool set
+  as the investigation agent, bound to one engagement id, no tool taking an engagement
+  parameter, so the agent cannot widen its own scope.
+- Cross-engagement capabilities resolve scope through `PortfolioScope`: the caller's assigned
+  engagements, or the whole organization for Admin/Owner oversight.
+
+**Billing experience**
+
+- `GET /api/audit/subscription/usage` reports users, clients, engagements, storage and AI
+  actions against their limits, counted server-side.
+- The billing panel shows capacity with usage, what AI can do on the plan, usage bars, and a
+  "next step up" panel listing only what actually changes. The plan picker compares capacity and
+  AI side by side. Every bullet derives from entitlement values the server sent.
+- `Stripe:Prices` carries placeholders for the five purchasable Audit codes; the three sandbox
+  Audit prices created before this phase no longer map to a plan and must be recreated.
+
+**Known limitation.** `max_users` is declared and surfaced but has no enforcement point: nothing
+in the product adds an organization member yet. Every other Audit limit is enforced server-side.
+
+---
+
+## Phase 9.5.1 — Audit AI usage, credits and consumption (Completed)
+
+Audit-only. The Accounting usage model is explicitly out of scope; Accounting capabilities
+declare no cost and still charge one credit apiece, exactly as before.
+
+**Consumption model**
+
+- Every capability declares a `Cost` in AI credits in `AuditAiCapabilities`, beside the
+  entitlement levels that already gate it. A question costs 1, a document summary 2, a report
+  section 6, a complete draft report 20, a full engagement report 35, an agent investigation 50,
+  agentic report generation 80. `Ai:OperationCosts:<capability>` overrides any of them.
+- Credits are a product measure, not a provider one: a fallback from OpenAI down to Ollama
+  charges the same, which a test asserts.
+- Audit allowances rescaled: Free 200 · Micro 12,000 · Micro-Growth 40,000 · Small 120,000 ·
+  Medium 300,000 · Medium-Growth 750,000 · Enterprise unlimited (negotiable per organisation
+  through `entitlement_overrides`). Free stayed at 200 so the shared Free plan code does not
+  change Accounting.
+
+**Enforcement (ADR-029, migration `0012`)**
+
+- `consume_ai_units` takes the credits and writes the ledger row under one `for update` lock;
+  no row returned means the allowance would be exceeded and the operation is refused before any
+  provider call. This is what makes concurrent requests safe.
+- `release_ai_units` gives credits back and deletes the ledger row when nothing reached a
+  provider, so the ledger always sums to the counter.
+- An agent run is charged once at the start rather than per turn.
+- Usage periods follow the paid billing period where there is one, the calendar month otherwise,
+  so an allowance refills when the customer is charged and nothing has to reset a row.
+- `ai_usage_events` records organization, user, module, capability, credits, client, engagement
+  and timestamp; service-role-only execute on both functions, organization-scoped RLS read.
+
+**Experience**
+
+- `AiUsageLimitException` (402) states what the action needed, what is left, when it resets and
+  what the next plan up includes — no provider or internal detail.
+- AI responses carry credits consumed, credits remaining and an approaching-limit flag.
+- `GET api/audit/subscription/usage` reports the credit balance and reset date. A credits strip
+  sits above the engagement AI tools and links to billing once four fifths are spent; the
+  billing page meters credits alongside capacity and gives each plan a one-line statement of
+  what its AI capacity is for. No AI-only dashboard was added.
+
+**Known limitation.** The costs and allowances are reasoned estimates of relative product value,
+not measurements of provider spend. They are configuration and catalogue values so they can be
+retuned once real usage exists.
 
 ---
 

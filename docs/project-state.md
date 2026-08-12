@@ -3,10 +3,10 @@
 **Where the implementation currently is.** For what the product should be, read
 `project-context.md`. This document is updated at the end of every phase.
 
-**Last verified:** 2026-08-11, after Phase 9 and the post-Phase 9 product and performance
-rounds. The build, the full test suite, `next build`, the frontend typecheck and ESLint were
-re-run against the repository on that date; the live-Supabase findings below come from the
-bring-up session.
+**Last verified:** 2026-08-13, after Phase 9.5.1. The backend build, the full test suite,
+`next build`, the frontend typecheck and ESLint were re-run against the repository on that date,
+and the anonymous plan catalogue was rendered end to end against a locally running API; the
+live-Supabase findings below come from the earlier bring-up session.
 
 ---
 
@@ -14,9 +14,13 @@ bring-up session.
 
 | | |
 | --- | --- |
-| Last completed phase | **Phase 9 — Stripe, subscriptions and billing** |
+| Last completed phase | **Phase 9.5.1 — Audit AI usage, credits and plan-based consumption** |
 | Current phase | none in progress |
 | Next phase | **Phase 10 — Security & authorization review** (not started) |
+
+Phase numbering is unchanged: Phase 9 remains Stripe; Phase 9.5 is an additional phase after it.
+Accounting's own plan restructure and AI-per-plan strategy are **deliberately not** part of
+Phase 9.5 and remain to be done in a separate phase.
 
 ---
 
@@ -27,9 +31,10 @@ Verified by running the commands, not assumed.
 | Check | Result |
 | --- | --- |
 | `dotnet build backend/Ledgance.slnx` | succeeded — 0 errors, 0 C# warnings (only the pre-existing `NU1903` OpenApi advisory) |
-| `dotnet test backend/Ledgance.slnx` | **275 passed, 0 failed** (92 shared, 81 audit, 90 accounting, 12 integration) — re-run 2026-08-11 after the evidence-versioning round |
-| API smoke test | boots clean; `api/subscriptions/plans` → 200 anonymous with the full catalog including `purchasable`; `api/billing/overview` → 401 unauthenticated; `api/billing/webhook` with an invalid signature → 400 and nothing written |
-| Frontend | `next build` succeeded (19 routes) · `npx tsc --noEmit` clean · ESLint clean on every touched file |
+| `dotnet test backend/Ledgance.slnx` | **373 passed, 0 failed** (126 shared, 145 audit, 90 accounting, 12 integration) — re-run 2026-08-13 after Phase 9.5.1 |
+| API smoke test | boots clean; `api/subscriptions/plans` → 200 anonymous with all eleven plan codes and their AI ladder values; `api/billing/overview` → 401 unauthenticated; `api/billing/webhook` with an invalid signature → 400 and nothing written |
+| Frontend | `next build` succeeded · `npx tsc --noEmit` clean · ESLint 0 errors (1 pre-existing warning in the vendored `hooks/use-toast.ts`) |
+| Pricing page | rendered against a live API: the whole Audit ladder (Free → Micro → Micro-Growth → Small → Medium → Medium-Growth → Enterprise) with correct capacity and per-plan AI capabilities, and Accounting unchanged |
 | **Live end-to-end** | signup → onboarding → organization → audit client verified against a real Supabase project (see the bring-up section) |
 
 ---
@@ -44,9 +49,10 @@ Verified by running the commands, not assumed.
 
 **Scaffolds** (a `MediatorAnchor` only, with empty `*.Domain` projects): `Accounting/Client`,
 `Accounting/Organization`, `Accounting/User`, `Audit/Organization`. `Audit/User` holds a single
-query (`GetOrganizationMembersQuery`). Both AI Infrastructure projects
-(`Audit.AI.Infrastructure`, `Accounting.AI.Infrastructure`) are empty — AI context assembly
-needed no infrastructure, and the providers live in `Shared.Infrastructure/Ai`. All are
+query (`GetOrganizationMembersQuery`). `Accounting.AI.Infrastructure` is still empty — AI
+context assembly needs no infrastructure and the providers live in `Shared.Infrastructure/Ai`;
+`Audit.AI.Infrastructure` gained its first content in Phase 9.5 (generated-report persistence).
+All are
 registered in `Ledgance.Api/DependencyInjection.cs` so the boundary exists before the code does.
 
 ### Platform (Shared)
@@ -72,11 +78,13 @@ registered in `Ledgance.Api/DependencyInjection.cs` so the boundary exists befor
 
 ### Audit
 
-Client feature (`Modules/Audit/Client`), Engagement module (`Modules/Audit/Engagement`, 38
-command/query slices, team confinement per ADR-017), Audit AI module (11 proposal-only capabilities behind
-the shared AI orchestrator — 10 completion capabilities from Phase 3 plus the `audit.agent`
-capability from Phase 7, ADR-018/ADR-022). Phase 6 added the linked-accounting slices inside
-Engagement. See `implementation-status.md` Phases 2–3, 6 and 7 for the full inventory.
+Client feature (`Modules/Audit/Client`), Engagement module (`Modules/Audit/Engagement`, 39
+command/query slices including the Phase 9.5 plan-usage query, team confinement per ADR-017),
+Audit AI module (25 capabilities behind the shared AI orchestrator — 10 completion capabilities
+from Phase 3, `audit.agent` from Phase 7, and 14 added in Phase 9.5, ADR-018/ADR-022/ADR-027).
+Everything except the persisted generated reports is proposal-only; generated reports are
+persisted drafts that a manager or partner must review. Phase 6 added the linked-accounting
+slices inside Engagement. See `implementation-status.md` Phases 2–3, 6 and 7 for the full inventory.
 
 ### Accounting — Ledger module (`Modules/Accounting/Ledger`) — new in Phase 4
 
@@ -193,6 +201,133 @@ anonymous `HandleBillingWebhookCommand`.
   collection is written as SQL null instead of falling back to a NOT NULL column's default
   (this is what broke the first live checkout, on `entitlement_overrides`). A reflection test
   guards the whole class of bug for the shared models.
+
+### Audit plans, AI entitlements and report generation — new in Phase 9.5
+
+**Audit plan structure replaced.** `AuditProfessional`/`AuditOrganization`/`AuditFirm` are gone;
+the ladder is now Free → Micro → Micro-Growth → Small → Medium → Medium-Growth → Enterprise,
+declared once in `SubscriptionPlanCatalog`. Capacity per plan (users / clients / engagements /
+storage): Free 3 / 1 / 2 / 5 GB · Micro 15 / 30 / 75 / 250 GB · Micro-Growth 40 / 100 / 300 /
+500 GB · Small 90 / 250 / 800 / 750 GB · Medium 150 / 500 / 1,300 / 2 TB · Medium-Growth 200 /
+unlimited / unlimited / 6 TB · Enterprise unlimited on every dimension. A stored row naming a
+retired code resolves to Free in code (`SupabaseSubscriptionReader` parses with a Free
+fallback); migration `0011` maps existing rows onto the closest new plan so a paying
+organisation does not silently drop to Free. The catalogue also gained `Ordered(module)` and
+`NextAbove(plan)` so "the next plan up" is a server fact.
+
+Because `Free` is one shared code, raising Audit Free to 3 users and 5 GB raised Accounting Free
+too. That is an increase, not a restriction, and Accounting's own plan values are otherwise
+untouched — the Accounting restructure is a later phase.
+
+**Two new ordered entitlements** sit beside `ai_max_tier`: `ai_report_scope`
+(`none` → `sections` → `full_draft` → `engagement` → `portfolio` → `agentic` → `custom`) and
+`ai_analysis_scope` (`document` → `engagement` → `workflow` → `portfolio`). They are independent
+of the tier, which is what lets Micro buy `advanced` reasoning without buying whole-report
+writing. `AiEntitlementGate` (Shared.Infrastructure/Ai) is now the single plan check for both
+`AiCompletionService` and `AgentRunnerService`, so one completion and an agent loop are gated
+identically. A granted value outside its ladder ranks below every level, so a typo or a tampered
+override denies rather than escalates.
+
+**Audit AI capabilities grew from 11 to 25**, each declaring the tier, report scope and analysis
+scope it consumes. New slices: finding/engagement summaries, engagement notes and working-paper
+wording (Free); audit-plan and materiality assistance, and single report sections (Micro);
+engagement-wide intelligence, evidence-gap analysis, complete draft reports, section
+regeneration and report consistency checking (Micro-Growth); full engagement reporting for
+management and reviewers (Small); portfolio intelligence and client/firm reporting (Medium);
+agentic report generation (Medium-Growth). `GET api/audit/ai/capabilities` now also returns
+`requiredPlan` — the cheapest plan including that capability, resolved from the catalogue — so
+the UI names the upgrade without holding plan rules.
+
+**Generated reports are persisted drafts under review.** `GeneratedAuditReport`
+(Audit.AI.Domain) holds structured sections with the engagement records the model cited, plus
+the provider and model that produced it; it is stored in `audit_generated_reports`
+(migration `0011`, RLS read-scoped like every other Audit table) through the previously empty
+`Ledgance.Audit.AI.Infrastructure`. A draft leaves `Draft` only via `ReviewGeneratedReportCommand`,
+which requires the engagement **Manager or Partner** team role — organization Admin/Owner
+oversight is read access, not review authority. Accepting records who took responsibility; it
+never writes `audit_reports`, and `FinalizeAuditReportCommand` (partner, no open findings) is
+unchanged. Regenerating a section stores a *new* draft rather than editing one a reviewer may be
+reading.
+
+Report prompts carry a fixed anti-fabrication discipline: no invented evidence, procedures,
+findings, amounts, client details or conclusions; `[NOT IN THE ENGAGEMENT RECORD: …]` where the
+record is short; `[PARTNER JUDGMENT]` on anything reserved to the partner; sources cited per
+section. Agentic generation reuses `AuditAgentTools` — the same read-only, mediator-dispatched
+tools as the investigation agent, bound to one engagement id, no tool taking an engagement
+parameter. Cross-engagement capabilities resolve scope through `PortfolioScope`: the caller's
+assigned engagements, or the whole organization for Admin/Owner oversight.
+
+**Billing experience.** `GET api/audit/subscription/usage` reports users, clients, engagements,
+storage and AI actions used against their limits, counted server-side. The billing page shows
+current usage against capacity, what AI can do on the plan, and a "next step up" panel listing
+only what actually changes; the plan picker compares capacity and AI side by side. Every bullet
+is derived from the entitlement values the server sent, so nothing is advertised that the server
+would refuse. `Stripe:Prices` in `appsettings.json` now carries placeholders for the five
+purchasable Audit codes.
+
+### AI usage, credits and consumption — new in Phase 9.5.1
+
+**An AI operation costs what it is worth.** Every capability declares a `Cost` in AI credits
+alongside its entitlement levels, in the same catalogue (`AuditAiCapabilities`), so pricing an
+operation is one line next to the gating that already governs it. Current Audit prices: an
+assistant question or a summary 1, a document summary 2, planning/risk/procedure/finding
+assistance 3–4, a report section 6, evidence or engagement-wide analysis 8, a complete draft
+report 20, a consistency check 10, reasoning-tier analysis 12, a full engagement report 35,
+portfolio intelligence 25, portfolio reporting 40, an agent investigation 50, agentic report
+generation 80. `Ai:OperationCosts:<capability>` overrides any of them without a deploy.
+
+Credits are a **product** measure, not a provider one — a fallback from OpenAI down to Ollama
+charges the same, which a test asserts, so swapping a model never changes a customer's bill.
+
+**Allowances were rescaled** for the new prices (Audit only; Accounting's are untouched):
+Free 200 · Micro 12,000 · Micro-Growth 40,000 · Small 120,000 · Medium 300,000 ·
+Medium-Growth 750,000 · Enterprise unlimited. Free stayed at 200 deliberately — raising it
+would have raised Accounting Free too, since `Free` is one shared plan code, and 200 credits
+still buys 200 assistant questions on a plan whose most expensive capability costs 2. Enterprise
+capacity is negotiated through `entitlement_overrides` rather than a fixed ceiling in code.
+
+**Usage is reserved before the work runs, not recorded after.** `consume_ai_units` (migration
+`0012`) takes the credits and writes the ledger row under one `for update` lock on the counter
+row; returning no row means the allowance would have been exceeded and the operation is refused.
+This is what makes concurrent requests safe — a read-then-write from the application would let
+two simultaneous callers both see the same remaining balance and both proceed. A test drives ten
+concurrent operations at a 10-credit remainder and asserts exactly two succeed.
+
+**Failed operations follow one rule: an operation that produces no result costs nothing.** If no
+provider produced anything — an outage, every tier failing, an agent whose provider dies
+mid-conversation — `release_ai_units` gives the credits back and deletes the ledger row, so the
+ledger always sums to the counter. Once a provider has returned, the credits stay spent even if
+the application fails afterwards. A release that itself fails is logged and left; the units stay
+consumed, which is the safe direction, and it never replaces the original error.
+
+**An agent run is charged once, up front, at the capability's cost** rather than per provider
+turn. A multi-step run is one expensive operation, and paying for it before it starts means a
+run cannot exhaust the allowance half way through and return nothing. The loop stays bounded by
+the workload's tool-step budget.
+
+**Two tables.** `ai_usage` remains the per-period counter (the row a limit check reads and the
+only one that must be locked); `ai_usage_events` is the attribution ledger — organization, user,
+module, capability, credits, client, engagement, timestamp. Both are written by the same
+function so they cannot drift apart. Organization-scoped RLS read, service-role-only execute on
+both functions.
+
+**The period follows the subscription.** `IAiUsagePeriodResolver` keys usage on the paid billing
+period end (`sub:2026-09-14`) when there is a live Active/Trialing subscription, and on the
+calendar month otherwise — which is what a Free organization gets. When Stripe advances the
+subscription the key changes and the allowance refills; nothing has to reset a row. Upgrades,
+downgrades and cancellations need no special handling: the entitlement service already resolves
+the current plan, and a non-Active subscription resolves to Free.
+
+**Refusals are actionable.** `AiUsageLimitException` (a 402, like every entitlement refusal)
+says what the action needed, what is left, when the allowance resets and what the next plan up
+carries — with no provider, model or internal detail in it. `GET api/audit/subscription/usage`
+now also returns the AI credit balance and reset date; AI responses carry what the call
+consumed, what remains and whether the organization is within a fifth of its limit.
+
+**Frontend.** A credits strip above the engagement AI tools shows the balance and reset date and
+links to billing once four fifths are spent; proposals and agent reports show what they cost;
+the billing page meters AI credits alongside capacity and gives each plan a one-line statement
+of what its AI capacity is for. No AI-only dashboard was added.
 
 ### Accounting ↔ Audit integration (`backend/Integration`) — new in Phase 6
 
@@ -455,13 +590,33 @@ checks on ledger lines and unique `(entity_id, code)` / `(entity_id, entry_numbe
 **Migrations 0001–0007 were confirmed applied to a live Supabase project** (0006 grants the
 Data API roles newer projects no longer receive by default; 0007 adds `organizations.products`
 for platform scoping); RLS and `*_read_own` policies verified by SQL probes. **0008 (billing),
-0009 (token claims hook) and 0010 (evidence versioning) were written after that session and
-have not been confirmed applied** — the features that need them will fail against a project
-still on 0007.
+0009 (token claims hook), 0010 (evidence versioning), 0011 (generated audit reports plus the
+Audit plan-code remap) and 0012 (AI usage accounting) were written after that session and have
+not been confirmed applied** — the features that need them will fail against a project still on
+0007. Without 0011, AI report generation cannot store a draft, and any organisation still
+holding a retired Audit plan code resolves to Free. Without 0012, **every AI request fails**:
+the reservation calls `consume_ai_units`, which will not exist. 0012 has been reviewed for
+plpgsql correctness but not executed — no Postgres was available in this session.
 
-### Tests — 275 passing
+### Tests — 373 passing
 
-- Shared (92): 16 billing tests (Phase 9: permission gate on checkout, Free and Enterprise
+- Shared (126): +15 in Phase 9.5.1 (`AiUsageAccountingTests`) — an operation consuming what it
+  declares, expensive operations costing more than cheap ones, configuration repricing an
+  operation, an operation costing more than the remainder refused outright, the refusal naming
+  the reset date and the next plan's allowance while exposing no provider or internal detail,
+  unlimited never refused but still recorded, a negotiated Enterprise allowance replacing
+  unlimited, work that never reached a provider giving its credits back, a capability outside
+  the plan costing nothing, **ten concurrent operations against a 10-credit remainder yielding
+  exactly two grants**, usage attributed to the calling organization/user/engagement, a new
+  period starting from an empty allowance while the previous period's total stands, the
+  approaching-limit flag raised before the limit is hit, isolation between organizations, and
+  Audit and Accounting metered separately. Plus +19 in Phase 9.5 — the full Audit capacity and storage ladders, a monotonicity
+  guard asserting no dimension or AI ladder ever goes backwards as a plan gets more expensive
+  (per product, so the shared Free row's cross-product allowance does not trip it),
+  `NextAbove` staying inside its own product, a retired plan code no longer parsing, every plan
+  publishing the three AI ladder values, the report and analysis scopes each refusing a workload
+  the tier alone would allow, the same workload passing once the plan grants the scope, and an
+  unrecognised ladder grant denying rather than escalating. Plus 16 billing tests (Phase 9: permission gate on checkout, Free and Enterprise
   refused, unpriced plan refused, session URL + metadata + customer reuse, checkout blocked
   when a subscription is active, unverified webhook rejected, entitlements following a
   subscription event, duplicate delivery ignored, stale event discarded, deletion falling back
@@ -473,7 +628,30 @@ still on 0007.
   `prod_…` ids, placeholders, unknown plan codes), live price/currency/interval on the plans
   row, an unreadable price still rendering the page, the persistence-model null-collection
   guard, and a checkout failure not orphaning its provider customer.
-- Audit (81): +3 evidence-versioning domain tests (retained history with per-version paths and
+- Audit (145): +13 in Phase 9.5.1 (`AuditAiUsageTests`) — a summary costing what the catalogue
+  says, a whole report costing at least ten times a summary, usage attributed to the engagement
+  it was spent on, an unauthorized operation consuming nothing, a capability outside the plan
+  consuming nothing, a direct API call unable to get past an exhausted allowance, each plan's
+  allowance carrying a stated number of runs of the operation it is sold on (six plans), and a
+  provider fallback not changing the price. Plus +51 in Phase 9.5. Plan matrix (10): what each of the seven plans includes and
+  excludes, asserted through the capability catalogue the API serves, plus every capability
+  being reachable on some plan, the cheapest-plan resolution per capability, and `ai_enabled=false`
+  removing everything regardless of plan. Report generation (14, through the **real**
+  `AiCompletionService` so the production gate is what is tested): Free refused a section and a
+  whole report, Micro allowed a section but refused the whole report, Micro-Growth producing a
+  persisted draft that awaits review, Micro-Growth refused the full engagement report, Small
+  allowed it, a non-team member refused, a draft unreachable through another engagement,
+  a Senior unable to accept, a Partner accepting with the acceptance recorded, no second review,
+  regeneration leaving the reviewed version untouched, sources surviving onto the sections,
+  prose from the provider still yielding a reviewable draft, and the prompts carrying the
+  anti-fabrication rules. Agentic reporting (5): every plan below Medium-Growth refused,
+  Medium-Growth storing a draft for review, non-team member refused, the tool set confined to one
+  engagement, and the agent instructed not to fill gaps. Portfolio (6): plans below Medium
+  refused, a member seeing only assigned engagements, an Admin seeing the organisation, a member
+  assigned to nothing getting nothing, client scoping, and the reporting discipline applied.
+  Domain (7): a draft starting awaiting-review, no empty draft, no acceptance without review
+  authority, acceptance recording the reviewer, rejection requiring a reason, no double review,
+  and citations surviving a round trip. Plus +3 evidence-versioning domain tests (retained history with per-version paths and
   notes, tag normalisation, empty content refused on upload and supersede), +1 activity
   predicate-form assertion, +1 recent-activity confinement test (the org feed shows only the caller's
   engagements), +5 agent workflow tests (Phase 7) and +6 linked-accounting workflow tests
@@ -504,9 +682,22 @@ still on 0007.
 1. **Live Stripe bring-up** — Phase 9 is implemented and tested against a fake provider, but no
    call has run against a real Stripe account. Create the products and prices, map them through
    `Stripe:Prices:*`, register the webhook endpoint, then walk checkout → webhook → entitlement
-   change once end to end. Tax/VAT, metered pricing and dunning beyond the past-due state remain
-   out of scope.
-2. **Remaining frontend gaps** — the deep product workspaces, AI and agent UX now exist
+   change once end to end. Phase 9.5 replaced the Audit plan codes, so the three sandbox Audit
+   prices created earlier no longer map to anything — five new Audit prices are needed
+   (`AuditMicro`, `AuditMicroGrowth`, `AuditSmall`, `AuditMedium`, `AuditMediumGrowth`).
+   Until then every paid Audit plan reports `purchasable: false`. Tax/VAT, metered pricing and
+   dunning beyond the past-due state remain out of scope.
+2. **AI credit prices are a first cut.** The per-capability costs and the rescaled allowances
+   are reasoned estimates of relative product value, not measurements of provider spend. They
+   are configuration (`Ai:OperationCosts`) and catalogue values precisely so they can be retuned
+   once real usage exists; nothing in the code assumes today's numbers.
+3. **`max_users` has no enforcement point.** The limit is declared per plan and surfaced in
+   billing usage, but nothing in the product adds an organisation member: membership is created
+   only by `ProvisionOrganizationCommand` (the owner), and engagement team assignment requires an
+   existing member. The check belongs in the member-invitation slice, which does not exist yet.
+   Every other Audit limit — clients, engagements, storage, AI units, AI capabilities — is
+   enforced server-side today.
+4. **Remaining frontend gaps** — the deep product workspaces, AI and agent UX now exist
    (see the post-Phase 8 section). Still unbuilt: the review-notes UI (`POST/resolve` note
    endpoints on working papers are implemented but unused by the frontend), reconciliation
    line-clearing (`PUT …/reconciliations/{id}/cleared-lines` likewise), and the
@@ -516,11 +707,11 @@ still on 0007.
    `GET api/audit/accounting-context` and import from it once the link is on. There is no
    engagement **Export** and no in-browser document **preview** — both were left out rather
    than shipped as buttons that do nothing.
-3. Security review, quality, polish (Phases 10–13).
-4. Shared accounting context beyond the trial balance (GL drill-down, statements,
+5. Security review, quality, polish (Phases 10–13).
+6. Shared accounting context beyond the trial balance (GL drill-down, statements,
    documents) — widen `IAccountingReadContract` + `ILinkedAccountingSource` when an Audit
    workflow needs it.
-5. Write-capable agent tools with explicit human acceptance, if the product ever wants
+7. Write-capable agent tools with explicit human acceptance, if the product ever wants
    them — the pipeline-as-tool-boundary design (ADR-022) already supports it safely.
 
 ---

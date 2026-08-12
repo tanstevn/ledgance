@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Ledgance.Shared.Application.Abstractions;
 using Ledgance.Shared.Application.Authorization;
 using Ledgance.Shared.Application.Exceptions;
@@ -107,7 +107,7 @@ namespace Ledgance.Shared.Unit.Tests.Behaviors {
             var harness = new MediatorTestHarness(TestIdentity.User())
                 .WithHandler<AdvancedReviewRequest, Result<string>>(handler);
 
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
 
             var exception = await Assert.ThrowsAsync<EntitlementException>(
                 () => harness.SendAsync(new AdvancedReviewRequest()));
@@ -122,7 +122,7 @@ namespace Ledgance.Shared.Unit.Tests.Behaviors {
                 .WithHandler<AdvancedReviewRequest, Result<string>>(
                     new EchoHandler<AdvancedReviewRequest>());
 
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditOrganization);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditSmall);
 
             var result = await harness.SendAsync(new AdvancedReviewRequest());
 

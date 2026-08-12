@@ -85,6 +85,7 @@ namespace Ledgance.Audit.Engagement.Application.Ports {
     public interface IClientLookup {
         Task<bool> ExistsActiveAsync(Guid clientId, CancellationToken ct);
         Task<IReadOnlyDictionary<Guid, string>> GetNamesAsync(IEnumerable<Guid> clientIds, CancellationToken ct);
+        Task<long> CountActiveAsync(CancellationToken ct);
     }
 
     public interface IEvidenceFileStore {

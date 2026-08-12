@@ -1,4 +1,4 @@
-using Ledgance.Shared.Application.Ai;
+﻿using Ledgance.Shared.Application.Ai;
 using Ledgance.Shared.Application.Exceptions;
 using Ledgance.Shared.Application.Subscriptions;
 using Ledgance.Shared.Infrastructure.Ai;
@@ -12,6 +12,8 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
         private readonly FakeCurrentUserAccessor _user = new(TestIdentity.User());
         private readonly FakeEntitlementService _entitlements = new();
         private readonly InMemoryAiUsageMeter _usage = new();
+        private readonly StubAiUsagePeriodResolver _periods = new();
+        private readonly StubAiOperationCosts _costs = new();
         private readonly FakeAgentToolClient _openClaw = new(AiProviders.OpenClaw);
         private readonly FakeAiChatClient _anthropic;
         private readonly List<string> _toolInvocations = [];
@@ -24,7 +26,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
         }
 
         private AgentRunnerService Runner() =>
-            new(_user, _entitlements, _usage,
+            new(_user, _entitlements, _usage, _periods, _costs,
                 new ConfiguredAiModelRouter(Options.Create(new AiSettings())),
                 [_openClaw], [_anthropic], NullLogger<AgentRunnerService>.Instance);
 
@@ -47,7 +49,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
 
         [Fact]
         public async Task A_plan_below_the_agentic_tier_is_refused_before_any_provider_call() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditOrganization);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditSmall);
 
             var exception = await Assert.ThrowsAsync<EntitlementException>(
                 () => Runner().RunAsync(Workload(), default));
@@ -59,7 +61,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
 
         [Fact]
         public async Task A_run_executes_tools_then_returns_the_final_answer() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
             _openClaw.Turns.Enqueue(ToolCall("get_data"));
             _openClaw.Turns.Enqueue(new AgentTurn("The data says X.", null));
 
@@ -76,13 +78,13 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
             Assert.Equal(["get_data"], _toolInvocations);
             Assert.Equal("data-result",
                 _openClaw.Calls[1].Exchanges.Single().Result);
-            Assert.Equal(2, _usage.UsedNow(TestIdentity.DefaultOrganizationId,
+            Assert.Equal(1, _usage.UsedNow(TestIdentity.DefaultOrganizationId,
                 ProductModule.Audit));
         }
 
         [Fact]
         public async Task An_unknown_tool_is_reported_back_instead_of_failing_the_run() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
             _openClaw.Turns.Enqueue(ToolCall("drop_database"));
             _openClaw.Turns.Enqueue(new AgentTurn("Recovered.", null));
 
@@ -96,7 +98,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
 
         [Fact]
         public async Task An_authorization_denial_inside_a_tool_is_contained_not_bypassed() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
             _openClaw.Turns.Enqueue(ToolCall("get_data"));
             _openClaw.Turns.Enqueue(new AgentTurn("Done without it.", null));
 
@@ -110,7 +112,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
 
         [Fact]
         public async Task The_step_limit_forces_a_final_turn_with_no_tools() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
 
             for (var i = 0; i < 5; i++) {
                 _openClaw.Turns.Enqueue(ToolCall("get_data"));
@@ -128,7 +130,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
 
         [Fact]
         public async Task An_openclaw_failure_falls_back_to_the_chat_provider_chain() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
             _openClaw.Throws = new HttpRequestException("OpenClaw is down.");
 
             var run = await Runner().RunAsync(Workload(), default);
@@ -140,7 +142,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
 
         [Fact]
         public async Task The_chat_fallback_can_drive_tool_calls_through_the_json_protocol() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
             _openClaw.Throws = new HttpRequestException("OpenClaw is down.");
 
             var replied = false;
@@ -154,7 +156,7 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
                 return """{"action":"call_tool","tool":"get_data","arguments":{}}""";
             });
 
-            var runner = new AgentRunnerService(_user, _entitlements, _usage,
+            var runner = new AgentRunnerService(_user, _entitlements, _usage, _periods, _costs,
                 new ConfiguredAiModelRouter(Options.Create(new AiSettings())),
                 [_openClaw], [adapter], NullLogger<AgentRunnerService>.Instance);
 
@@ -166,11 +168,11 @@ namespace Ledgance.Shared.Unit.Tests.Ai {
         }
 
         [Fact]
-        public async Task The_monthly_unit_limit_stops_a_run_before_the_next_turn() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditFirm);
-            _usage.Seed(TestIdentity.DefaultOrganizationId, ProductModule.Audit, 60000);
+        public async Task An_exhausted_allowance_stops_the_run_before_it_starts() {
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMediumGrowth);
+            _usage.Seed(TestIdentity.DefaultOrganizationId, ProductModule.Audit, 750_000);
 
-            await Assert.ThrowsAsync<EntitlementException>(
+            await Assert.ThrowsAsync<AiUsageLimitException>(
                 () => Runner().RunAsync(Workload(), default));
 
             Assert.Empty(_openClaw.Calls);

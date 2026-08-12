@@ -53,16 +53,64 @@ expensive model than the capability requires.
 ## 3. Entitlement enforcement **[implemented]**
 
 All server-side, inside the orchestrator (plus `[RequiresEntitlement(Audit, AiEnabled)]` on
-every AI request for the pipeline gate):
+every AI request for the pipeline gate). Steps 1-6 live in `AiEntitlementGate`, shared by
+`AiCompletionService` and `AgentRunnerService` so a single completion and an agent loop are
+gated identically:
 
 1. `ai_enabled` capability check.
 2. `ai_max_tier` vs the workload's required tier (`AiTiers.Allows`).
-3. `ai_monthly_units`: usage read from the `ai_usage` table (one unit per completion, per
-   organization + module + `yyyy-MM` period); exceeding it is a 402. Usage is recorded only on
-   successful completions.
-4. `ai_max_context_tokens`: context documents share the remaining token budget and are
+3. `ai_report_scope` vs the workload's required report scope (`AiReportScopes.Allows`) —
+   **[Phase 9.5]** how complete a report the plan may generate.
+4. `ai_analysis_scope` vs the workload's required analysis scope (`AiAnalysisScopes.Allows`) —
+   **[Phase 9.5]** how far across the record set it may reason.
+5. `ai_monthly_units`: the operation's cost in **AI credits** is reserved from the allowance
+   before the provider is called — atomically, by `consume_ai_units`, which checks and
+   decrements under one row lock (ADR-029). No room means a 402 and no provider call.
+6. `ai_max_context_tokens`: context documents share the remaining token budget and are
    truncated per document (`[truncated]` marker); the assembled prompt is then checked against
    the limit (~4 chars/token estimate).
+
+The three ladders are independent, so a plan can buy deeper reasoning without buying a wider
+view. A refusal names the capability and the level it needs, which is what lets the client say
+which plan unlocks it.
+
+### AI credits **[Phase 9.5.1]**
+
+An operation costs what it is worth, not one unit each: a question costs 1, a document summary
+2, a report section 6, a complete draft report 20, a full engagement report 35, an agent
+investigation 50, agentic report generation 80. Each capability declares its `Cost` in
+`AuditAiCapabilities`, beside the entitlement levels that already gate it, and
+`Ai:OperationCosts:<capability>` overrides any of them without a deploy. Credits are a
+**product** measure: a fallback from OpenAI down to Ollama charges the same, so swapping a model
+or a provider never changes a customer's bill.
+
+Accounting capabilities declare no cost and therefore charge 1 apiece — exactly their previous
+behaviour. The Accounting usage model is a later phase.
+
+`ai_usage` remains the per-period counter (the row a limit check reads and the only one that
+must be locked); `ai_usage_events` is the attribution ledger — organization, user, module,
+capability, credits, client, engagement, timestamp. Both are written by `consume_ai_units`, so
+they cannot drift apart, and `release_ai_units` deletes the ledger row when it gives credits
+back so the ledger always sums to the counter. Only the service role may execute either.
+
+`IAiUsagePeriodResolver` keys usage on the paid billing period end when there is a live
+Active/Trialing subscription, and on the calendar month otherwise. When the provider advances
+the subscription the key changes and the allowance refills — nothing resets a row, and the
+previous period's total stands.
+
+An agent run is charged once at the start, at the capability's cost, rather than per turn: a
+multi-step run is one expensive operation, and paying before it starts means it cannot exhaust
+the allowance half way through and return nothing.
+
+**Failure policy (ADR-029):** an operation that produces no result costs nothing — no provider
+returned, so the credits are released. An operation whose provider returned keeps its charge
+even if the application fails afterwards. A release that itself fails is logged and left; the
+units stay spent, and the original error is never replaced.
+
+Refusals carry what a user needs: `AiUsageLimitException` (a 402) states what the action needed,
+what is left, when the allowance resets and what the next plan up includes. Successful responses
+carry what the call consumed, what remains, and whether the organization is within a fifth of
+its limit, so a surface can warn before work starts failing.
 
 ## 4. Context and authorization **[implemented]**
 
@@ -82,32 +130,90 @@ tier, and a fixed disclaimer. **AI never writes to the audit record.** A human t
 into the record through the normal commands (add risk, save working paper, raise finding, save
 report), which enforce their own authorization and domain rules and log their own activity.
 
-## 6. Audit AI capabilities **[implemented — Phase 3]**
+## 6. Audit AI capabilities **[implemented — Phase 3, extended Phase 9.5]**
 
-Catalog: `Ledgance.Audit.AI.Domain.AuditAiCapabilities` — the single place capability-to-tier
-gating is declared. `GET /api/audit/ai/capabilities` reports each with an `included` flag for
-the caller's plan.
+Catalog: `Ledgance.Audit.AI.Domain.AuditAiCapabilities` — the single place capability-to-plan
+gating is declared. Each capability names the reasoning tier, report scope and analysis scope it
+consumes; a plan includes it only when it grants all three. `GET /api/audit/ai/capabilities`
+reports each with an `included` flag for the caller's plan and `requiredPlan`, the cheapest plan
+that includes it, resolved from the catalogue so the UI names the upgrade without holding plan
+rules of its own.
 
-| Tier required | Capability | Endpoint (`api/audit/ai/…`) |
+| Cheapest plan | Capability | Endpoint (`api/audit/ai/…`) |
 | --- | --- | --- |
-| basic | Assistant / engagement Q&A | `POST assistant` |
-| basic | Document & evidence summarization | `POST engagements/{id}/summarize` |
-| advanced | Risk suggestions | `POST engagements/{id}/suggest-risks` |
-| advanced | Procedure suggestions | `POST engagements/{id}/suggest-procedures` |
-| advanced | Working-paper drafting | `POST engagements/{id}/draft-working-paper` |
-| advanced | Finding drafting | `POST engagements/{id}/draft-finding` |
-| reasoning | Complex risk / cross-document analysis | `POST engagements/{id}/analyze-risks` |
-| reasoning | Anomaly detection (trial balance) | `POST engagements/{id}/detect-anomalies` |
-| reasoning | Review assistance | `POST engagements/{id}/assist-review` |
-| reasoning | Audit report drafting | `POST engagements/{id}/draft-report` |
-| agentic | Multi-step agentic investigation (§8) | `POST engagements/{id}/agent` |
+| Free | Assistant / engagement Q&A | `POST assistant` |
+| Free | Document & evidence summarization | `POST engagements/{id}/summarize` |
+| Free | Finding summaries | `POST engagements/{id}/summarize-findings` |
+| Free | Engagement summary | `POST engagements/{id}/summarize-engagement` |
+| Free | Engagement notes from an observation | `POST engagements/{id}/draft-note` |
+| Free | Working-paper wording assistance | `POST engagements/{id}/improve-wording` |
+| Micro | Audit planning assistance | `POST engagements/{id}/assist-plan` |
+| Micro | Materiality assistance | `POST engagements/{id}/assist-materiality` |
+| Micro | Risk suggestions | `POST engagements/{id}/suggest-risks` |
+| Micro | Procedure suggestions | `POST engagements/{id}/suggest-procedures` |
+| Micro | Working-paper drafting | `POST engagements/{id}/draft-working-paper` |
+| Micro | Finding drafting | `POST engagements/{id}/draft-finding` |
+| Micro | One report section | `POST engagements/{id}/report-section` |
+| Micro-Growth | Engagement-wide intelligence | `POST engagements/{id}/analyze-engagement` |
+| Micro-Growth | Evidence coverage & gap analysis | `POST engagements/{id}/analyze-evidence` |
+| Micro-Growth | Complete draft audit report | `POST engagements/{id}/draft-report` |
+| Micro-Growth | Section regeneration | `POST engagements/{id}/generated-reports/{reportId}/sections` |
+| Micro-Growth | Report consistency check | `POST engagements/{id}/generated-reports/{reportId}/consistency` |
+| Small | Complex risk / cross-document analysis | `POST engagements/{id}/analyze-risks` |
+| Small | Anomaly detection (trial balance) | `POST engagements/{id}/detect-anomalies` |
+| Small | Review assistance | `POST engagements/{id}/assist-review` |
+| Small | Full engagement report (management / reviewer) | `POST engagements/{id}/engagement-report` |
+| Medium | Multi-engagement, client and firm intelligence | `POST portfolio/analyze` |
+| Medium | Client and firm-level reporting | `POST portfolio/report` |
+| Medium-Growth | Multi-step agentic investigation (§8) | `POST engagements/{id}/agent` |
+| Medium-Growth | Agentic report generation | `POST engagements/{id}/agentic-report` |
 
-Plan mapping (from `SubscriptionPlanCatalog`): Free → basic; Audit Professional → +advanced;
-Audit Organization → +reasoning; Audit Firm/Enterprise → +agentic.
+Review endpoints, gated by permission and engagement role rather than by plan:
+`GET engagements/{id}/generated-reports`, `GET …/{reportId}`, `POST …/{reportId}/review`.
+
+### AI report generation **[Phase 9.5]**
+
+Everything above the section level produces a **persisted draft**, not a proposal blob:
+`GeneratedAuditReport` (Audit.AI.Domain) holds structured sections, each with the engagement
+records the model named as its sources, plus the provider and model that produced it. It enters
+the record as `Draft` and leaves that state only through `ReviewGeneratedReportCommand`, which
+requires the engagement **Manager or Partner** team role — organization Admin/Owner oversight is
+read access, not review authority. Accepting records who took professional responsibility for
+working from the draft; it does **not** write `audit_reports` and it does not finalize anything.
+The engagement partner still finalizes the audit report through `FinalizeAuditReportCommand`,
+which is unchanged. Regenerating a section stores a *new* draft rather than editing the one a
+reviewer may be looking at.
+
+Report prompts carry a fixed reporting discipline (`AuditAiPrompts.ReportingDiscipline`): never
+invent evidence, procedures, findings, amounts, client details, documentation or conclusions;
+write `[NOT IN THE ENGAGEMENT RECORD: …]` where the record lacks something rather than filling
+the gap; mark partner-reserved judgments `[PARTNER JUDGMENT]`; cite the records each section
+rests on. The model is asked for JSON sections so a draft is individually reviewable and
+regenerable; prose that ignores the format becomes a single section rather than a failure.
+
+Agentic report generation (`RunAgenticReportWorkflowCommand`) reuses `AuditAgentTools`, the same
+read-only, mediator-dispatched tool set as the investigation agent, bound to one engagement id —
+no tool takes an engagement parameter, so the agent cannot widen its own scope. It gathers,
+drafts, then checks its draft against what it gathered, and the result is still a draft awaiting
+review.
+
+Cross-engagement capabilities resolve their own scope (`PortfolioScope`): the engagements the
+caller is assigned to, or every engagement in the organization for Admin/Owner oversight. The
+repository is organization-scoped underneath, so no query can reach another tenant.
+
+Plan mapping (from `SubscriptionPlanCatalog`), tier / report scope / analysis scope:
+Free → basic / none / document · Micro → advanced / sections / document ·
+Micro-Growth → advanced / full_draft / engagement · Small → reasoning / engagement / workflow ·
+Medium → reasoning / portfolio / portfolio · Medium-Growth → agentic / agentic / portfolio ·
+Enterprise → agentic / custom / portfolio.
+
+Enterprise's `custom` report scope is the architectural seat for customer-specific templates,
+methodology and agents; those are negotiated per organization through `entitlement_overrides`
+and are **not** shipped behaviour. Nothing in the product advertises them as working features.
 
 Known limits: evidence summarization works from recorded metadata/description (binary file
-content extraction is future work); report drafting marks partner judgments with
-`[PARTNER JUDGMENT]` and is gated to `Manage` + team membership.
+content extraction is future work). Source citations are the record names the model returns,
+matched to nothing structurally — they help a reviewer navigate, they are not verified links.
 
 ## 7. Accounting AI capabilities **[implemented — Phase 5]**
 

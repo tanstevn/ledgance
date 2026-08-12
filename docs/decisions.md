@@ -4,6 +4,79 @@ Newest first. Each entry: decision, why, consequence.
 
 ---
 
+## ADR-029 — AI usage is reserved before the work, and refunded only when nothing ran
+
+**Decision.** Every AI operation declares a cost in AI credits, and the allowance is decremented
+**before** the provider is called, atomically, by a database function that checks and updates
+under one row lock. An operation that produces no result — no provider returned anything —
+releases its credits and its ledger row. Once a provider has returned, the credits stay spent
+even if the application fails afterwards. An agent run is charged once at the start rather than
+per turn.
+
+**Why.** The previous model recorded one unit after each successful completion. That is racy:
+two simultaneous requests both read the same remaining balance, both decide there is room, and
+both proceed — with an allowance of one, two get through. Checking and decrementing has to be a
+single locked operation, and that forces the charge to happen before the work rather than after.
+Charging up front also fixes the worse agent failure: a long run that exhausts the allowance
+half way through and returns nothing.
+
+**Consequence.** A compensating release exists, but it is one call on one well-defined failure
+path, not a refund system: the ledger deletes the row so it always sums to the counter. A
+release that itself fails is logged and the units stay spent — the safe direction, and it never
+masks the original error. The policy a customer sees is simple: an operation that produces no
+result costs nothing; an operation that returns costs its full price.
+
+---
+
+## ADR-028 — An AI-generated report is a persisted draft under professional review
+
+**Decision.** Anything above a single report section is stored as `GeneratedAuditReport` in its
+own table, with structured sections, the records the model cited, and the provider and model
+that produced it. It enters as `Draft` and leaves that state only through an explicit review by
+an engagement **Manager or Partner**. Accepting a draft records who took professional
+responsibility for working from it; it never writes `audit_reports` and never finalizes
+anything. Organization Admin/Owner oversight grants read access to the engagement, not review
+authority. Regenerating a section stores a new draft rather than mutating the reviewed one.
+
+**Why.** An audit report carries professional responsibility that cannot be delegated to a
+model. A proposal returned as a blob of text has no state, so nothing can record that a
+qualified person examined it — which is exactly what makes AI-assisted reporting defensible.
+Persisting the draft also gives the sections somewhere to keep their sources, which is what lets
+a reviewer check a claim instead of trusting it.
+
+**Consequence.** The Audit AI module needed its first Infrastructure project and a table
+(migration `0011`). Two review states exist in the system that must not be confused: accepting
+an AI draft (Manager/Partner, this ADR) and finalizing the audit report
+(`FinalizeAuditReportCommand` — Partner only, no open findings, unchanged). The former is input
+to the latter and never a substitute for it.
+
+---
+
+## ADR-027 — AI plan gating uses three independent ordered entitlements
+
+**Decision.** Alongside `ai_max_tier`, two further ordered entitlements gate AI:
+`ai_report_scope` (`none` → `sections` → `full_draft` → `engagement` → `portfolio` →
+`agentic` → `custom`) and `ai_analysis_scope` (`document` → `engagement` → `workflow` →
+`portfolio`). A capability declares what it needs on each; a plan includes it only when it
+grants all three. `AiEntitlementGate` applies the check for both single completions and agent
+loops. A granted value outside its ladder ranks below every level.
+
+**Why.** The product asks for seven Audit plans differentiated by *what AI can do*, not by how
+many messages it will send. Four reasoning tiers cannot express that: Micro and Micro-Growth
+both want `advanced` reasoning but differ on whether a whole report may be written, and Small
+and Medium both want `reasoning` but differ on whether AI may look across engagements. Widening
+the tier ladder instead would have coupled report completeness to model cost, which is not the
+same axis.
+
+**Consequence.** Plan differentiation is declarative — a capability names its levels and the
+catalogue names each plan's grants, so moving a capability between plans is a data change. The
+catalogue can resolve the cheapest plan including any capability, which is what lets the UI say
+which plan unlocks a locked feature without holding plan rules. A monotonicity test asserts no
+ladder ever regresses as a plan gets more expensive, because a single mistyped value would
+otherwise sell a downgrade.
+
+---
+
 ## ADR-026 — Organization context may travel in the access token, at a bounded staleness cost
 
 **Decision.** `CurrentUserMiddleware` prefers `org_id`/`org_role` claims on the verified access

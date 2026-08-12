@@ -1,4 +1,4 @@
-using Ledgance.Shared.Application.Ai;
+﻿using Ledgance.Shared.Application.Ai;
 using Ledgance.Shared.Application.Exceptions;
 using Ledgance.Shared.Application.Identity;
 using Ledgance.Shared.Application.Subscriptions;
@@ -7,10 +7,11 @@ using System.Text;
 
 namespace Ledgance.Shared.Infrastructure.Ai {
     /// <summary>
-    /// The only path to an AI provider. Order matters: authorization → entitlements (tier, usage,
-    /// context size) → routing → execution → usage recording. A workload above the plan's tier is
-    /// refused with an upgrade-relevant error, never silently escalated; a provider failure falls
-    /// back down the tier chain, never up.
+    /// The only path to an AI provider. Order matters: authorization → entitlements (tier,
+    /// scopes, context size) → usage reservation → routing → execution. A workload above the
+    /// plan's tier is refused with an upgrade-relevant error, never silently escalated; a
+    /// provider failure falls back down the tier chain, never up, and gives the reserved usage
+    /// back when no provider produced anything.
     /// </summary>
     public sealed class AiCompletionService : IAiCompletionService {
         private static readonly string[] TierOrder =
@@ -19,16 +20,21 @@ namespace Ledgance.Shared.Infrastructure.Ai {
         private readonly ICurrentUserAccessor _currentUser;
         private readonly IEntitlementService _entitlements;
         private readonly IAiUsageMeter _usage;
+        private readonly IAiUsagePeriodResolver _periods;
+        private readonly IAiOperationCosts _costs;
         private readonly IAiModelRouter _router;
         private readonly IReadOnlyDictionary<string, IAiChatClient> _clients;
         private readonly ILogger<AiCompletionService> _logger;
 
         public AiCompletionService(ICurrentUserAccessor currentUser,
-            IEntitlementService entitlements, IAiUsageMeter usage, IAiModelRouter router,
+            IEntitlementService entitlements, IAiUsageMeter usage,
+            IAiUsagePeriodResolver periods, IAiOperationCosts costs, IAiModelRouter router,
             IEnumerable<IAiChatClient> clients, ILogger<AiCompletionService> logger) {
             _currentUser = currentUser;
             _entitlements = entitlements;
             _usage = usage;
+            _periods = periods;
+            _costs = costs;
             _router = router;
             _clients = clients.ToDictionary(client => client.Provider);
             _logger = logger;
@@ -40,20 +46,8 @@ namespace Ledgance.Shared.Infrastructure.Ai {
             var entitlements = await _entitlements.GetAsync(user.OrganizationId,
                 workload.Module, ct);
 
-            entitlements.RequireCapability(Entitlements.AiEnabled);
-
-            var permittedTier = entitlements.Tier(Entitlements.AiMaxTier);
-
-            if (!AiTiers.Allows(permittedTier, workload.RequiredTier)) {
-                throw EntitlementException.NotIncluded(
-                    $"AI capability '{workload.Capability}' (requires the " +
-                    $"'{workload.RequiredTier}' AI tier)");
-            }
-
-            var period = AiUsage.CurrentPeriod();
-            var used = await _usage.GetUsedAsync(user.OrganizationId, workload.Module,
-                period, ct);
-            entitlements.RequireWithinLimit(Entitlements.AiMonthlyUnits, used + 1);
+            AiEntitlementGate.Require(entitlements, workload.Capability, workload.RequiredTier,
+                workload.RequiredReportScope, workload.RequiredAnalysisScope);
 
             var userPrompt = ComposeUserPrompt(workload,
                 entitlements.Limit(Entitlements.AiMaxContextTokens));
@@ -62,12 +56,23 @@ namespace Ledgance.Shared.Infrastructure.Ai {
                 + AiUsage.EstimateTokens(userPrompt);
             entitlements.RequireWithinLimit(Entitlements.AiMaxContextTokens, estimatedTokens);
 
-            var completion = await ExecuteWithFallbackAsync(workload, userPrompt,
-                estimatedTokens, ct);
+            var reservation = await AiUsageReservations.TakeAsync(_usage, _periods, _costs,
+                entitlements, new AiUsageContext(user.OrganizationId, user.UserId,
+                    workload.Module, workload.Capability, workload.ClientId,
+                    workload.EngagementId),
+                workload.Cost, ct);
 
-            await _usage.RecordAsync(user.OrganizationId, workload.Module, period, 1, ct);
+            try {
+                var completion = await ExecuteWithFallbackAsync(workload, userPrompt,
+                    estimatedTokens, ct);
 
-            return completion;
+                return completion with { Usage = reservation.Charge };
+            }
+            catch {
+                await AiUsageReservations.ReleaseAsync(_usage, user.OrganizationId,
+                    reservation, _logger, ct);
+                throw;
+            }
         }
 
         private async Task<AiCompletion> ExecuteWithFallbackAsync(AiWorkload workload,

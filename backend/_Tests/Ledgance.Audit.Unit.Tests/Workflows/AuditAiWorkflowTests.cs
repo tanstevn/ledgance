@@ -1,4 +1,4 @@
-using Ledgance.Audit.AI.Application;
+﻿using Ledgance.Audit.AI.Application;
 using Ledgance.Audit.AI.Application.Analysis;
 using Ledgance.Audit.AI.Application.Assistant;
 using Ledgance.Audit.AI.Application.Drafting;
@@ -160,7 +160,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
             Assert.False(rows[AuditAiCapabilities.RiskSuggestions.Key].Included);
             Assert.False(rows[AuditAiCapabilities.ReportDraft.Key].Included);
 
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditOrganization);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditSmall);
             var upgraded = (await harness.SendAsync(new GetAuditAiCapabilitiesQuery()))
                 .Data!.ToDictionary(row => row.Key);
 

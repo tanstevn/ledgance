@@ -7,12 +7,14 @@ using System.Text.Json;
 
 namespace Ledgance.Shared.Infrastructure.Ai {
     /// <summary>
-    /// The only path to an agentic provider. Every run requires the 'agentic' AI tier; each
-    /// provider turn consumes one usage unit and is re-checked against the monthly limit, so a
-    /// runaway loop stops at the entitlement, not at the bill. Tool failures — including
-    /// authorization denials from the nested pipeline — are reported back to the agent as tool
-    /// results, never swallowed and never bypassed. Provider fallback goes down the tier chain
-    /// on the first turn only; a provider that dies mid-conversation aborts the run.
+    /// The only path to an agentic provider. Every run requires the 'agentic' AI tier and is
+    /// charged once, up front, at the capability's cost — a multi-step run is a single expensive
+    /// operation, and paying for it before it starts means a run that exhausts the allowance
+    /// half way through cannot happen. The loop itself is bounded by the workload's tool-step
+    /// budget. Tool failures — including authorization denials from the nested pipeline — are
+    /// reported back to the agent as tool results, never swallowed and never bypassed. Provider
+    /// fallback goes down the tier chain on the first turn only; a provider that dies
+    /// mid-conversation aborts the run.
     /// </summary>
     public sealed class AgentRunnerService : IAgentRunner {
         private static readonly string[] TierOrder =
@@ -23,17 +25,22 @@ namespace Ledgance.Shared.Infrastructure.Ai {
         private readonly ICurrentUserAccessor _currentUser;
         private readonly IEntitlementService _entitlements;
         private readonly IAiUsageMeter _usage;
+        private readonly IAiUsagePeriodResolver _periods;
+        private readonly IAiOperationCosts _costs;
         private readonly IAiModelRouter _router;
         private readonly IReadOnlyDictionary<string, IAgentToolClient> _clients;
         private readonly ILogger<AgentRunnerService> _logger;
 
         public AgentRunnerService(ICurrentUserAccessor currentUser,
-            IEntitlementService entitlements, IAiUsageMeter usage, IAiModelRouter router,
+            IEntitlementService entitlements, IAiUsageMeter usage,
+            IAiUsagePeriodResolver periods, IAiOperationCosts costs, IAiModelRouter router,
             IEnumerable<IAgentToolClient> agentClients, IEnumerable<IAiChatClient> chatClients,
             ILogger<AgentRunnerService> logger) {
             _currentUser = currentUser;
             _entitlements = entitlements;
             _usage = usage;
+            _periods = periods;
+            _costs = costs;
             _router = router;
             _logger = logger;
 
@@ -54,15 +61,27 @@ namespace Ledgance.Shared.Infrastructure.Ai {
             var entitlements = await _entitlements.GetAsync(user.OrganizationId,
                 workload.Module, ct);
 
-            entitlements.RequireCapability(Entitlements.AiEnabled);
+            AiEntitlementGate.Require(entitlements, workload.Capability, AiTiers.Agentic,
+                workload.RequiredReportScope, AiAnalysisScopes.Portfolio);
 
-            if (!AiTiers.Allows(entitlements.Tier(Entitlements.AiMaxTier), AiTiers.Agentic)) {
-                throw EntitlementException.NotIncluded(
-                    $"AI capability '{workload.Capability}' (requires the " +
-                    $"'{AiTiers.Agentic}' AI tier)");
+            var reservation = await AiUsageReservations.TakeAsync(_usage, _periods, _costs,
+                entitlements, new AiUsageContext(user.OrganizationId, user.UserId,
+                    workload.Module, workload.Capability, workload.ClientId,
+                    workload.EngagementId),
+                workload.Cost, ct);
+
+            try {
+                return await RunTurnsAsync(workload, reservation.Charge, ct);
             }
+            catch {
+                await AiUsageReservations.ReleaseAsync(_usage, user.OrganizationId,
+                    reservation, _logger, ct);
+                throw;
+            }
+        }
 
-            var period = AiUsage.CurrentPeriod();
+        private async Task<AgentRunResult> RunTurnsAsync(AgentWorkload workload,
+            AiUsageCharge charge, CancellationToken ct) {
             var exchanges = new List<AgentExchange>();
             var steps = new List<AgentStep>();
 
@@ -70,9 +89,6 @@ namespace Ledgance.Shared.Infrastructure.Ai {
             var turnsUsed = 0;
 
             while (true) {
-                await RequireUnitAsync(entitlements, user.OrganizationId, workload.Module,
-                    period, ct);
-
                 var exhausted = steps.Count >= workload.MaxToolSteps;
                 var tools = exhausted ? [] : workload.Tools;
                 var goal = exhausted
@@ -93,13 +109,12 @@ namespace Ledgance.Shared.Infrastructure.Ai {
                 }
 
                 turnsUsed++;
-                await _usage.RecordAsync(user.OrganizationId, workload.Module, period, 1, ct);
 
                 if (turn.ToolCall is null || exhausted) {
                     return new AgentRunResult(
                         turn.FinalAnswer ?? "The agent did not produce an answer.",
                         steps, active.Value.Client.Provider, active.Value.Route.Model,
-                        turnsUsed);
+                        turnsUsed, charge);
                 }
 
                 var result = await ExecuteToolAsync(workload.Tools, turn.ToolCall, ct);
@@ -107,12 +122,6 @@ namespace Ledgance.Shared.Infrastructure.Ai {
                 steps.Add(new AgentStep(turn.ToolCall.Tool, turn.ToolCall.ArgumentsJson,
                     result));
             }
-        }
-
-        private async Task RequireUnitAsync(EntitlementSet entitlements, Guid organizationId,
-            ProductModule module, string period, CancellationToken ct) {
-            var used = await _usage.GetUsedAsync(organizationId, module, period, ct);
-            entitlements.RequireWithinLimit(Entitlements.AiMonthlyUnits, used + 1);
         }
 
         private async Task<(AgentTurn, (IAgentToolClient, AiModelRoute, string))>

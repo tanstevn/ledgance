@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Ledgance.Audit.AI.Domain;
 using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Application.Ports;
@@ -70,7 +70,7 @@ namespace Ledgance.Audit.AI.Application.Assistant {
                 "Answer the auditor's question. Use the engagement context when provided; " +
                 "otherwise answer from general audit methodology and say that no engagement " +
                 "context was available.",
-                request.Question, context), ct);
+                request.Question, context, request.EngagementId), ct);
 
             if (request.EngagementId is not null) {
                 await _activity.RecordAsync(new ActivityEntry("Audit", "ai.assistant",
@@ -160,7 +160,7 @@ namespace Ledgance.Audit.AI.Application.Assistant {
                 AuditAiCapabilities.DocumentSummary,
                 "Summarize the document for an audit reviewer: purpose, key contents, " +
                 "conclusions reached, and anything that looks unresolved or inconsistent.",
-                "Summarize the attached document.", context), ct);
+                "Summarize the attached document.", context, request.EngagementId), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.document_summary",
                 subjectType, subjectId, "generated an AI summary.",
@@ -178,6 +178,15 @@ namespace Ledgance.Audit.AI.Application.Assistant {
         public string Key { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string RequiredTier { get; set; } = string.Empty;
+        public string RequiredReportScope { get; set; } = string.Empty;
+        public string RequiredAnalysisScope { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The cheapest plan that includes this capability, resolved from the catalogue so the
+        /// UI can name the upgrade without holding plan rules of its own.
+        /// </summary>
+        public string RequiredPlan { get; set; } = string.Empty;
+
         public bool Included { get; set; }
     }
 
@@ -199,15 +208,39 @@ namespace Ledgance.Audit.AI.Application.Assistant {
 
             var aiEnabled = entitlements.Has(Entitlements.AiEnabled);
             var permittedTier = entitlements.Tier(Entitlements.AiMaxTier);
+            var permittedReports = entitlements.Value(Entitlements.AiReportScope,
+                AiReportScopes.None);
+            var permittedAnalysis = entitlements.Value(Entitlements.AiAnalysisScope,
+                AiAnalysisScopes.Document);
 
             return Result<IEnumerable<AuditAiCapabilityRow>>.Success(AuditAiCapabilities.All
                 .Select(capability => new AuditAiCapabilityRow {
                     Key = capability.Key,
                     Description = capability.Description,
                     RequiredTier = capability.RequiredTier,
+                    RequiredReportScope = capability.RequiredReportScope,
+                    RequiredAnalysisScope = capability.RequiredAnalysisScope,
+                    RequiredPlan = CheapestPlanIncluding(capability),
                     Included = aiEnabled
                         && AiTiers.Allows(permittedTier, capability.RequiredTier)
+                        && AiReportScopes.Allows(permittedReports,
+                            capability.RequiredReportScope)
+                        && AiAnalysisScopes.Allows(permittedAnalysis,
+                            capability.RequiredAnalysisScope)
                 }));
         }
+
+        private static string CheapestPlanIncluding(AuditAiCapability capability) =>
+            SubscriptionPlanCatalog.Ordered(ProductModule.Audit)
+                .FirstOrDefault(plan => Grants(SubscriptionPlanCatalog.For(plan), capability))
+                .ToString();
+
+        private static bool Grants(IReadOnlyDictionary<string, string> values,
+            AuditAiCapability capability) =>
+            AiTiers.Allows(values[Entitlements.AiMaxTier], capability.RequiredTier)
+            && AiReportScopes.Allows(values[Entitlements.AiReportScope],
+                capability.RequiredReportScope)
+            && AiAnalysisScopes.Allows(values[Entitlements.AiAnalysisScope],
+                capability.RequiredAnalysisScope);
     }
 }

@@ -77,11 +77,14 @@ context can be sourced directly (see `module-boundaries.md` §4).
 See `subscription-entitlements.md` for the enforced limits.
 
 **Accounting:** Free · Solo ($14.99/mo) · Team · Professional · Enterprise (Contact Sales)
-**Audit:** Free · Professional (≤30 users) · Organization (≤75 users) · Firm (≤150 users) · Enterprise (Contact Sales)
+**Audit:** Free · Micro (15 users) · Micro-Growth (40) · Small (90) · Medium (150) · Medium-Growth (200) · Enterprise (Contact Sales)
 
 Free must be a genuinely usable product, not a demo. Pressure to upgrade comes from user
 count, volume, storage, collaboration depth, AI allowance and model tier, automation, and
-advanced analysis — not from crippling core workflows.
+advanced analysis — not from crippling core workflows. In Audit the strongest upgrade axis is
+**what AI can do**, not how many messages it will send: report generation deepens from nothing,
+to sections, to a whole draft, to the whole engagement, to across engagements, to an agent that
+assembles and checks its own draft.
 
 ## 6. AI
 

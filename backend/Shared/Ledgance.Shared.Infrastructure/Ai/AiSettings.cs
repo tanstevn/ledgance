@@ -16,6 +16,13 @@ namespace Ledgance.Shared.Infrastructure.Ai {
         /// </summary>
         public Dictionary<string, AiRouteSettings> Routing { get; set; } = [];
 
+        /// <summary>
+        /// Capability key → AI units it consumes, overriding what the module's capability
+        /// catalogue declares. Retuning what an operation costs a customer is a settings change,
+        /// and it stays independent of which provider happens to serve the tier.
+        /// </summary>
+        public Dictionary<string, long> OperationCosts { get; set; } = [];
+
         public sealed class OllamaSettings {
             public string BaseUrl { get; set; } = "http://localhost:11434";
         }

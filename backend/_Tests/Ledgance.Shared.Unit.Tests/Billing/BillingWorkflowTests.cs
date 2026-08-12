@@ -1,4 +1,4 @@
-using Ledgance.Shared.Application.Activity;
+﻿using Ledgance.Shared.Application.Activity;
 using Ledgance.Shared.Application.Billing;
 using Ledgance.Shared.Application.Exceptions;
 using Ledgance.Shared.Application.Identity;
@@ -115,7 +115,7 @@ namespace Ledgance.Shared.Unit.Tests.Billing {
             var harness = Harness(Owner());
 
             var result = await harness.SendAsync(new StartCheckoutCommand {
-                PlanCode = nameof(PlanCode.AuditProfessional)
+                PlanCode = nameof(PlanCode.AuditMicro)
             });
 
             Assert.False(result.Successful);

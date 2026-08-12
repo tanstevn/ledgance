@@ -4,8 +4,9 @@ namespace Ledgance.Shared.Application.Ai {
     public sealed record AiDocument(string Title, string Content);
 
     /// <summary>
-    /// A provider-agnostic unit of AI work. Features describe the task and its required tier;
-    /// the orchestrator decides which provider and model serve it.
+    /// A provider-agnostic unit of AI work. Features describe the task, the reasoning tier it
+    /// needs and how much report and analysis breadth it consumes; the orchestrator decides
+    /// which provider and model serve it, and refuses what the plan does not include.
     /// </summary>
     public sealed record AiWorkload(
         ProductModule Module,
@@ -13,11 +14,20 @@ namespace Ledgance.Shared.Application.Ai {
         string RequiredTier,
         string SystemPrompt,
         string UserPrompt,
-        IReadOnlyList<AiDocument> Context) {
+        IReadOnlyList<AiDocument> Context,
+        string RequiredReportScope = AiReportScopes.None,
+        string RequiredAnalysisScope = AiAnalysisScopes.Document,
+        long Cost = 1,
+        Guid? ClientId = null,
+        Guid? EngagementId = null) {
         public static AiWorkload For(ProductModule module, string capability,
             string requiredTier, string systemPrompt, string userPrompt,
-            IReadOnlyList<AiDocument>? context = null) =>
-            new(module, capability, requiredTier, systemPrompt, userPrompt, context ?? []);
+            IReadOnlyList<AiDocument>? context = null,
+            string requiredReportScope = AiReportScopes.None,
+            string requiredAnalysisScope = AiAnalysisScopes.Document,
+            long cost = 1, Guid? clientId = null, Guid? engagementId = null) =>
+            new(module, capability, requiredTier, systemPrompt, userPrompt, context ?? [],
+                requiredReportScope, requiredAnalysisScope, cost, clientId, engagementId);
     }
 
     public sealed record AiCompletion(
@@ -25,7 +35,19 @@ namespace Ledgance.Shared.Application.Ai {
         string Provider,
         string Model,
         string Tier,
-        int EstimatedContextTokens);
+        int EstimatedContextTokens,
+        AiUsageCharge? Usage = null);
+
+    /// <summary>
+    /// What the operation cost and what is left, so a caller can tell the user without a second
+    /// round trip. It carries no provider or cost-of-goods detail — units are a product measure.
+    /// </summary>
+    public sealed record AiUsageCharge(
+        long UnitsConsumed,
+        long UnitsRemaining,
+        bool IsUnlimited,
+        bool IsApproachingLimit,
+        DateTime? PeriodResetsAt);
 
     /// <summary>
     /// The single entry point features use. Implementations must enforce authorization,
@@ -48,26 +70,4 @@ namespace Ledgance.Shared.Application.Ai {
             int maxOutputTokens, CancellationToken ct);
     }
 
-    /// <summary>
-    /// Monthly AI usage per organization and module, in units (one unit per completion).
-    /// </summary>
-    public interface IAiUsageMeter {
-        Task<long> GetUsedAsync(Guid organizationId, ProductModule module, string period,
-            CancellationToken ct);
-
-        Task RecordAsync(Guid organizationId, ProductModule module, string period,
-            long units, CancellationToken ct);
-    }
-
-    public static class AiUsage {
-        public static string CurrentPeriod() =>
-            DateTime.UtcNow.ToString("yyyy-MM");
-
-        /// <summary>
-        /// Rough token estimate (~4 characters per token) used for the context-size entitlement
-        /// gate. Exact counts are provider-specific and not needed for limit enforcement.
-        /// </summary>
-        public static int EstimateTokens(string text) =>
-            (text.Length + 3) / 4;
-    }
 }

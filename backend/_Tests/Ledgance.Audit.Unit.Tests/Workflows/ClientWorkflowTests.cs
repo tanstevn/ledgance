@@ -1,4 +1,4 @@
-using Ledgance.Audit.Client.Application.Commands;
+﻿using Ledgance.Audit.Client.Application.Commands;
 using Ledgance.Audit.Unit.Tests.Support;
 using Ledgance.Shared.Application.Activity;
 using Ledgance.Shared.Application.Exceptions;
@@ -43,7 +43,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
             var harness = Harness(repository, TestIdentity.User(OrganizationRole.Manager,
                 permissions: Ledgance.Audit.Client.Application.AuditClientPermissions.Manage));
 
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
 
             var result = await harness.SendAsync(ValidCommand());
 
@@ -78,7 +78,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
                 .WithService<ClientPorts.IClientRepository>(new InMemoryClientRepository())
                 .WithService<IActivityRecorder>(recorder);
 
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
 
             await harness.SendAsync(ValidCommand());
 

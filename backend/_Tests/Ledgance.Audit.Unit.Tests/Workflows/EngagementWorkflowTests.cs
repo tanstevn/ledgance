@@ -1,4 +1,4 @@
-using Ledgance.Audit.Engagement.Application;
+﻿using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Application.AccountingContext;
 using Ledgance.Audit.Engagement.Application.Engagements;
 using Ledgance.Audit.Engagement.Application.Ports;
@@ -58,7 +58,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
         [Fact]
         public async Task An_engagement_cannot_reference_a_missing_or_archived_client() {
             var harness = Harness(Manager());
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
 
             var result = await harness.SendAsync(ValidCreate(Guid.NewGuid()));
 
@@ -70,7 +70,7 @@ namespace Ledgance.Audit.Unit.Tests.Workflows {
         public async Task Creating_an_engagement_assigns_the_creator_as_partner() {
             var user = Manager();
             var harness = Harness(user);
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
 
             var clientId = Guid.NewGuid();
             _clients.ActiveClients.Add(clientId);

@@ -17,7 +17,8 @@ namespace Ledgance.TestInfrastructure {
             }
 
             return Task.FromResult(new AiCompletion(Response, "Fake", "fake-model",
-                workload.RequiredTier, 100));
+                workload.RequiredTier, 100,
+                new AiUsageCharge(workload.Cost, 100, false, false, null)));
         }
     }
 
@@ -78,24 +79,91 @@ namespace Ledgance.TestInfrastructure {
         }
     }
 
+    /// <summary>
+    /// Mirrors the production meter's contract, including the part that matters most: reserving
+    /// checks and decrements under one lock, so a test can drive concurrent callers at it and
+    /// see the same refusal a real organization would.
+    /// </summary>
     public sealed class InMemoryAiUsageMeter : IAiUsageMeter {
+        private readonly Lock _gate = new();
         private readonly Dictionary<(Guid, ProductModule, string), long> _usage = [];
+        private readonly Dictionary<Guid, (Guid Organization, ProductModule Module, string Period, long Units)> _reservations = [];
 
-        public Task<long> GetUsedAsync(Guid organizationId, ProductModule module,
-            string period, CancellationToken ct) =>
-            Task.FromResult(_usage.GetValueOrDefault((organizationId, module, period)));
+        public List<AiUsageContext> Reserved { get; } = [];
 
-        public Task RecordAsync(Guid organizationId, ProductModule module, string period,
-            long units, CancellationToken ct) {
-            var key = (organizationId, module, period);
-            _usage[key] = _usage.GetValueOrDefault(key) + units;
-            return Task.CompletedTask;
+        public List<Guid> Released { get; } = [];
+
+        public Task<AiUsageSnapshot> GetAsync(Guid organizationId, ProductModule module,
+            AiUsagePeriod period, long limit, CancellationToken ct) {
+            lock (_gate) {
+                return Task.FromResult(new AiUsageSnapshot(period.Key, period.ResetsAt,
+                    _usage.GetValueOrDefault((organizationId, module, period.Key)), limit));
+            }
         }
 
-        public void Seed(Guid organizationId, ProductModule module, long units) =>
-            _usage[(organizationId, module, AiUsage.CurrentPeriod())] = units;
+        public Task<AiUsageReservation?> TryReserveAsync(AiUsageContext context,
+            AiUsagePeriod period, long units, long limit, CancellationToken ct) {
+            lock (_gate) {
+                var key = (context.OrganizationId, context.Module, period.Key);
+                var used = _usage.GetValueOrDefault(key);
 
-        public long UsedNow(Guid organizationId, ProductModule module) =>
-            _usage.GetValueOrDefault((organizationId, module, AiUsage.CurrentPeriod()));
+                if (limit != EntitlementSet.Unlimited && used + units > limit) {
+                    return Task.FromResult<AiUsageReservation?>(null);
+                }
+
+                _usage[key] = used + units;
+                Reserved.Add(context);
+
+                var id = Guid.NewGuid();
+                _reservations[id] = (context.OrganizationId, context.Module, period.Key, units);
+
+                return Task.FromResult<AiUsageReservation?>(
+                    new AiUsageReservation(id, period.Key, units, _usage[key], limit));
+            }
+        }
+
+        public Task ReleaseAsync(Guid organizationId, AiUsageReservation reservation,
+            CancellationToken ct) {
+            lock (_gate) {
+                if (_reservations.Remove(reservation.Id, out var held)
+                    && held.Organization == organizationId) {
+                    var key = (held.Organization, held.Module, held.Period);
+                    _usage[key] = Math.Max(0, _usage.GetValueOrDefault(key) - held.Units);
+                    Released.Add(reservation.Id);
+                }
+
+                return Task.CompletedTask;
+            }
+        }
+
+        public void Seed(Guid organizationId, ProductModule module, long units,
+            string? period = null) =>
+            _usage[(organizationId, module, period ?? AiUsage.CalendarPeriod())] = units;
+
+        public long UsedNow(Guid organizationId, ProductModule module, string? period = null) =>
+            _usage.GetValueOrDefault(
+                (organizationId, module, period ?? AiUsage.CalendarPeriod()));
+    }
+
+    /// <summary>
+    /// A period the test controls, so usage-window behaviour can be exercised without waiting
+    /// for a calendar or a billing cycle.
+    /// </summary>
+    public sealed class StubAiUsagePeriodResolver : IAiUsagePeriodResolver {
+        public AiUsagePeriod Period { get; set; } =
+            new(AiUsage.CalendarPeriod(), null);
+
+        public Task<AiUsagePeriod> ResolveAsync(Guid organizationId, ProductModule module,
+            CancellationToken ct) =>
+            Task.FromResult(Period);
+    }
+
+    public sealed class StubAiOperationCosts : IAiOperationCosts {
+        public Dictionary<string, long> Overrides { get; } = [];
+
+        public long CostOf(string capability, long declaredCost) =>
+            Overrides.TryGetValue(capability, out var configured)
+                ? configured
+                : Math.Max(1, declaredCost);
     }
 }

@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Ledgance.Audit.AI.Domain;
 using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Application.Ports;
@@ -73,7 +73,7 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 request.FocusArea is null
                     ? "Suggest additional risks for this engagement."
                     : $"Suggest additional risks, focusing on: {request.FocusArea}",
-                context), ct);
+                context, request.EngagementId), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.risk_suggestions",
                 "Engagement", request.EngagementId, "generated AI risk suggestions.",
@@ -141,7 +141,8 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 "Suggest audit procedures responsive to the identified risks, prioritizing " +
                 "risks with no responsive procedure yet. For each suggestion give: area, " +
                 "title, description of the work, and the risk(s) it responds to.",
-                "Suggest audit procedures for this engagement.", context), ct);
+                "Suggest audit procedures for this engagement.", context,
+                request.EngagementId), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.procedure_suggestions",
                 "Engagement", request.EngagementId, "generated AI procedure suggestions.",
@@ -212,7 +213,8 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 "Draft working-paper content with these sections: Objective, Work performed, " +
                 "Results, Conclusion. Mark every place requiring auditor input or evidence " +
                 "references with [TODO].",
-                $"Draft a working paper on: {request.Topic}", context), ct);
+                $"Draft a working paper on: {request.Topic}", context,
+                request.EngagementId), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.working_paper_draft",
                 "Engagement", request.EngagementId, "generated an AI working-paper draft.",
@@ -267,7 +269,8 @@ namespace Ledgance.Audit.AI.Application.Drafting {
                 "Draft an audit finding from the observation: title, condition, criteria, " +
                 "cause, effect, suggested severity (Low/Medium/High/Critical) and a " +
                 "recommendation. Note what evidence should be attached.",
-                $"Draft a finding from this observation: {request.Observation}", context), ct);
+                $"Draft a finding from this observation: {request.Observation}", context,
+                request.EngagementId), ct);
 
             await _activity.RecordAsync(new ActivityEntry("Audit", "ai.finding_draft",
                 "Engagement", request.EngagementId, "generated an AI finding draft.",

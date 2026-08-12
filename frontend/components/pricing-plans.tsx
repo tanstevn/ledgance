@@ -18,9 +18,11 @@ import {
 function PlanCard({
   plan,
   platform,
+  plans,
 }: {
   plan: SubscriptionPlanRow;
   platform: Platform;
+  plans: SubscriptionPlanRow[];
 }) {
   const presentation = planPresentation[plan.code];
   if (!presentation) return null;
@@ -61,7 +63,7 @@ function PlanCard({
         )}
       </div>
       <ul className="mt-6 space-y-3">
-        {planFeatures(plan, platform).map((feature) => (
+        {planFeatures(plan, platform, plans).map((feature) => (
           <li key={feature} className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
             <span className="text-sm">{feature}</span>
@@ -135,7 +137,12 @@ export function PricingPlans({ platform }: { platform: Platform }) {
   return (
     <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       {rows.map((plan) => (
-        <PlanCard key={plan.code} plan={plan} platform={platform} />
+        <PlanCard
+          key={plan.code}
+          plan={plan}
+          platform={platform}
+          plans={plans ?? []}
+        />
       ))}
     </div>
   );

@@ -3,6 +3,7 @@ using Ledgance.Accounting.Ledger.Application;
 using Ledgance.Accounting.Ledger.Infrastructure;
 using Ledgance.Audit.Client.Application;
 using Ledgance.Integration.AccountingContext;
+using Ledgance.Audit.AI.Infrastructure;
 using Ledgance.Audit.Client.Infrastructure;
 using Ledgance.Audit.Engagement.Application;
 using Ledgance.Audit.Engagement.Infrastructure;
@@ -92,6 +93,7 @@ namespace Ledgance.Api {
 
             services.AddAuditClientInfrastructure();
             services.AddAuditEngagementInfrastructure();
+            services.AddAuditAiInfrastructure();
             services.AddAccountingLedgerInfrastructure();
             services.AddAccountingContextIntegration();
 

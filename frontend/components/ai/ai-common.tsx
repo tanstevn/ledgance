@@ -18,12 +18,21 @@ import { useApiQuery } from "@/hooks/query";
 import type { Platform } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
+export interface AiUsageView {
+  unitsConsumed: number;
+  unitsRemaining: number;
+  isUnlimited: boolean;
+  isApproachingLimit: boolean;
+  periodResetsAt: string | null;
+}
+
 export interface AiProposal {
   capability: string;
   content: string;
   provider: string;
   model: string;
   tier: string;
+  usage?: AiUsageView | null;
   disclaimer: string;
 }
 
@@ -40,13 +49,89 @@ export interface AgentReport {
   provider: string;
   model: string;
   turnsUsed: number;
+  usage?: AiUsageView | null;
   disclaimer: string;
+}
+
+/**
+ * What the action just cost and what is left. Shown only when the plan meters AI at all, and
+ * highlighted once the allowance is running low so a team is warned before work starts failing.
+ */
+export function AiUsageNote({ usage }: { usage: AiUsageView | null | undefined }) {
+  if (!usage || usage.isUnlimited) return null;
+
+  return (
+    <span
+      className={cn(
+        "text-xs",
+        usage.isApproachingLimit ? "font-medium text-warning-foreground" : "text-muted-foreground",
+      )}
+    >
+      {usage.unitsConsumed} AI {usage.unitsConsumed === 1 ? "credit" : "credits"} used ·{" "}
+      {usage.unitsRemaining.toLocaleString()} left
+    </span>
+  );
+}
+
+/**
+ * The organization's remaining AI credits, read from the same server count that enforces the
+ * limit. It sits above the AI tools rather than in a dashboard of its own, because the moment
+ * it matters is the moment before someone starts an expensive action.
+ */
+export function AiCreditsStrip() {
+  const usage = useApiQuery<{
+    aiPeriodResetsAt: string | null;
+    measures: { key: string; used: number; limit: number }[];
+  }>("/api/audit/subscription/usage", { queryKey: ["audit-plan-usage"], retry: false });
+
+  const credits = usage.data?.measures.find(
+    (measure) => measure.key === "ai_monthly_units",
+  );
+
+  if (!credits || credits.limit === -1) return null;
+
+  const remaining = Math.max(0, credits.limit - credits.used);
+  const low = credits.used * 5 >= credits.limit * 4;
+
+  const resets = usage.data?.aiPeriodResetsAt
+    ? new Date(usage.data.aiPeriodResetsAt).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-2.5 text-xs",
+        low ? "border-warning/50 bg-warning/10" : "border-border/60 bg-card",
+      )}
+    >
+      <span className={low ? "font-medium" : "text-muted-foreground"}>
+        {remaining.toLocaleString()} of {credits.limit.toLocaleString()} AI credits
+        left{resets ? `, until ${resets}` : ""}. An action costs credits according
+        to the work it does.
+      </span>
+      {low && (
+        <Link
+          href="/dashboard/billing"
+          className="font-medium text-primary hover:underline"
+        >
+          See plans with more AI capacity →
+        </Link>
+      )}
+    </div>
+  );
 }
 
 export interface AiCapabilityRow {
   key: string;
   description: string;
   requiredTier: string;
+  requiredReportScope?: string;
+  requiredAnalysisScope?: string;
+  /** The cheapest plan that includes this capability, named by the server. */
+  requiredPlan?: string;
   included: boolean;
 }
 
@@ -80,7 +165,8 @@ export function ProposalCard({ proposal }: { proposal: AiProposal }) {
           <Sparkles className="h-4 w-4 text-primary" />
           AI proposal
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <AiUsageNote usage={proposal.usage} />
           <TierBadge tier={proposal.tier} />
           {proposal.provider} · {proposal.model}
         </div>
@@ -105,7 +191,8 @@ export function AgentReportCard({ report }: { report: AgentReport }) {
           <Bot className="h-4 w-4 text-primary" />
           Agent investigation
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <AiUsageNote usage={report.usage} />
           {report.provider} · {report.model} · {report.turnsUsed} turns
         </div>
       </div>
@@ -206,8 +293,9 @@ export function CapabilityGrid({
                 href={`/pricing?platform=${platform}`}
                 className="mt-0.5 inline-block text-xs font-medium text-primary hover:underline"
               >
-                Unlocks with the {tierLabels[capability.requiredTier] ?? "paid"}{" "}
-                tier →
+                {capability.requiredPlan
+                  ? `Unlocks on ${planLabels[capability.requiredPlan] ?? capability.requiredPlan} →`
+                  : `Unlocks with the ${tierLabels[capability.requiredTier] ?? "paid"} tier →`}
               </Link>
             )}
           </div>
@@ -222,6 +310,38 @@ export const capabilityIncluded = (
   capabilities: AiCapabilityRow[] | undefined,
   key: string,
 ) => capabilities?.find((capability) => capability.key === key)?.included ?? false;
+
+/**
+ * The plan a locked capability unlocks on, as the server names it. Falls back to the tier
+ * label when the server has not supplied one, so an older response still reads sensibly.
+ */
+export const capabilityUnlocksOn = (
+  capabilities: AiCapabilityRow[] | undefined,
+  key: string,
+) => {
+  const capability = capabilities?.find((row) => row.key === key);
+  if (!capability) return null;
+
+  return (
+    planLabels[capability.requiredPlan ?? ""] ??
+    tierLabels[capability.requiredTier] ??
+    "a paid plan"
+  );
+};
+
+export const planLabels: Record<string, string> = {
+  Free: "Free",
+  AuditMicro: "Micro",
+  AuditMicroGrowth: "Micro-Growth",
+  AuditSmall: "Small",
+  AuditMedium: "Medium",
+  AuditMediumGrowth: "Medium-Growth",
+  AuditEnterprise: "Enterprise",
+  AccountingSolo: "Solo",
+  AccountingTeam: "Team",
+  AccountingProfessional: "Professional",
+  AccountingEnterprise: "Enterprise",
+};
 
 /** The trigger for one AI tool: spins while its own run is in flight. */
 export function AiRunButton({
@@ -261,6 +381,7 @@ export function ToolCard({
   included,
   tier,
   platform,
+  unlocksOn,
   children,
 }: {
   title: string;
@@ -268,6 +389,8 @@ export function ToolCard({
   included: boolean;
   tier: string;
   platform: Platform;
+  /** The plan this unlocks on, when the server has named one. */
+  unlocksOn?: string | null;
   children: React.ReactNode;
 }) {
   return (
@@ -301,7 +424,9 @@ export function ToolCard({
           className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
         >
           <Lock className="h-3 w-3" />
-          Unlocks with the {tierLabels[tier] ?? "paid"} tier →
+          {unlocksOn
+            ? `Unlocks on ${unlocksOn} →`
+            : `Unlocks with the ${tierLabels[tier] ?? "paid"} tier →`}
         </Link>
       )}
     </div>

@@ -56,6 +56,11 @@ namespace Ledgance.Audit.Engagement.Infrastructure {
 
             return rows.Models.ToDictionary(model => model.Id, model => model.Name);
         }
+
+        public async Task<long> CountActiveAsync(CancellationToken ct) =>
+            await _repository.Query()
+                .Filter("is_archived", Constants.Operator.Equals, "false")
+                .Count(Constants.CountType.Exact, ct);
     }
 
     internal sealed class ClientEngagementCounter : IClientEngagementCounter {

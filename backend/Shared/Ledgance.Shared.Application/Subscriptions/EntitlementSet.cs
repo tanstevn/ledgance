@@ -26,10 +26,16 @@ namespace Ledgance.Shared.Application.Subscriptions {
                 ? limit
                 : 0;
 
+        /// <summary>
+        /// A non-numeric entitlement value. The fallback is the caller's own floor, so a plan
+        /// missing the key lands on the least capable level of that ladder rather than on
+        /// another ladder's vocabulary.
+        /// </summary>
+        public string Value(string key, string fallback) =>
+            _values.TryGetValue(key, out var value) ? value : fallback;
+
         public string Tier(string key) =>
-            _values.TryGetValue(key, out var value)
-                ? value
-                : AiTiers.Basic;
+            Value(key, AiTiers.Basic);
 
         public bool IsWithinLimit(string key, long requestedTotal) {
             var limit = Limit(key);

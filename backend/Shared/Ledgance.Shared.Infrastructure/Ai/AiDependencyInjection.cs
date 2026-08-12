@@ -26,7 +26,9 @@ namespace Ledgance.Shared.Infrastructure.Ai {
             services.AddScoped<IAgentToolClient>(provider =>
                 provider.GetRequiredService<OpenClawAgentClient>());
 
+            services.AddSingleton<IAiOperationCosts, ConfiguredAiOperationCosts>();
             services.AddScoped<IAiUsageMeter, SupabaseAiUsageMeter>();
+            services.AddScoped<IAiUsagePeriodResolver, SubscriptionAiUsagePeriodResolver>();
             services.AddScoped<IAiCompletionService, AiCompletionService>();
             services.AddScoped<IAgentRunner, AgentRunnerService>();
 

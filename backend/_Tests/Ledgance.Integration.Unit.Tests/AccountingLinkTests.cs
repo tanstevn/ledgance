@@ -1,4 +1,4 @@
-using Ledgance.Accounting.Ledger.Application.Published;
+﻿using Ledgance.Accounting.Ledger.Application.Published;
 using Ledgance.Integration.AccountingContext;
 using Ledgance.Shared.Application.Activity;
 using Ledgance.Shared.Application.Exceptions;
@@ -59,7 +59,7 @@ namespace Ledgance.Integration.Unit.Tests {
             new(_accounting, _link, _entitlements, _currentUser);
 
         private void EntitleBothProducts() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
             _entitlements.With(ProductModule.Accounting, PlanCode.AccountingSolo);
         }
 
@@ -76,7 +76,7 @@ namespace Ledgance.Integration.Unit.Tests {
 
         [Fact]
         public async Task Availability_requires_the_accounting_plan_to_include_sharing() {
-            _entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            _entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
             _entitlements.With(ProductModule.Accounting, PlanCode.Free);
 
             var availability = await Adapter().GetAvailabilityAsync(CancellationToken.None);
@@ -189,7 +189,7 @@ namespace Ledgance.Integration.Unit.Tests {
         [Fact]
         public async Task Enabling_requires_the_entitlement_on_both_products() {
             var harness = Harness(Admin());
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
             harness.Entitlements.With(ProductModule.Accounting, PlanCode.Free);
 
             await Assert.ThrowsAsync<EntitlementException>(
@@ -201,7 +201,7 @@ namespace Ledgance.Integration.Unit.Tests {
         [Fact]
         public async Task An_admin_enables_the_link_and_activity_is_recorded() {
             var harness = Harness(Admin());
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
             harness.Entitlements.With(ProductModule.Accounting, PlanCode.AccountingSolo);
 
             var result = await harness.SendAsync(
@@ -233,7 +233,7 @@ namespace Ledgance.Integration.Unit.Tests {
         public async Task The_status_view_combines_link_and_entitlements() {
             _link.Enabled = true;
             var harness = Harness(Admin());
-            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditProfessional);
+            harness.Entitlements.With(ProductModule.Audit, PlanCode.AuditMicro);
             harness.Entitlements.With(ProductModule.Accounting, PlanCode.Free);
 
             var status = (await harness.SendAsync(new GetAccountingLinkStatusQuery())).Data!;
